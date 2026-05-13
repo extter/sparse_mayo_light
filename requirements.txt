@@ -1,0 +1,10 @@
+numpy
+torch
+torchvision
+scikit-image
+scikit-learn
+matplotlib
+pyyaml
+tqdm
+astra-toolbox
+cupy-cuda12x
