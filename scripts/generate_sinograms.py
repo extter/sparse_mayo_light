@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+generate_sinograms.py
+
 Genera sinogrammi clean e corrupted per tutti gli split del dataset.
 """
 
