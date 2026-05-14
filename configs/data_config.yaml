@@ -3,3 +3,6 @@ train_ratio: 0.7
 val_ratio: 0.15
 test_ratio: 0.15
 random_seed: 42
+
+angle_configs: [180, 90, 60, 45]
+noise_level: 0.005

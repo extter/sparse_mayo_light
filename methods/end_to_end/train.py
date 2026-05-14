@@ -27,7 +27,7 @@ from unet import UNet
 from dataset import get_dataloaders
 
 from evaluation.metrics import SSIM, PSNR
-from notebooks.ippy.operators import *
+from third_party.ippy.operators import *
 from utilities import *
 from dataset import *
 from losses import MixedLoss
