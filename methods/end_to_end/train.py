@@ -75,7 +75,6 @@ def train(
             x_fbp = projector.FBP(x_sino_noisy)
 
             optimizer.zero_grad()
-            y_pred = model(x_fbp)
             
             with torch.cuda.amp.autocast(enabled=(device == "cuda")):
                 y_pred = model(x_fbp)
