@@ -2,7 +2,7 @@ import os
 import shutil
 
 base_src = "data"
-base_dst = "data/nn_dataset"
+base_dst = "data/dataset_nn"
 
 splits = ["train", "validation", "test"]
 
