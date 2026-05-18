@@ -16,7 +16,7 @@ def angle_fmt(a):
     return f"angle_{int(num):03d}"
 
 for split in splits:
-    dst_split = "val" if split == "validation" else split
+    dst_split = "validation" if split == "validation" else split
 
     for ang in angles:
         ang_dst = angle_fmt(ang)

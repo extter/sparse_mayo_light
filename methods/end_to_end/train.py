@@ -40,7 +40,7 @@ from losses import MixedLoss
 def train(
     model: nn.Module,
     train_loader: DataLoader,
-    val_loader: DataLoader,
+    validation_loader: DataLoader,
     optimizer: torch.optim.Optimizer,
     loss_fn,
     projector: object = None,
@@ -56,10 +56,10 @@ def train(
     """
     print(f"Training NN model for {n_epochs} epochs on {device}.")
     
-    loss_history = {"train": [], "val": []}
-    ssim_history = {"train": [], "val": []}
+    loss_history = {"train": [], "validation": []}
+    ssim_history = {"train": [], "validation": []}
     
-    best_val_loss = float('inf')
+    best_validation_loss = float('inf')
     scaler = torch.cuda.amp.GradScaler(enabled=(device == "cuda"))
 
     for epoch in range(n_epochs):
@@ -85,40 +85,40 @@ def train(
             scaler.update()
 
             epoch_train_loss += loss.item()
-            ssim_val = SSIM(y_pred.detach(), x_tv.detach())
-            epoch_train_ssim += ssim_val.item() if hasattr(ssim_val, "item") else ssim_val
+            ssim_validation = SSIM(y_pred.detach(), x_tv.detach())
+            epoch_train_ssim += ssim_validation.item() if hasattr(ssim_validation, "item") else ssim_validation
 
         avg_train_loss = epoch_train_loss / len(train_loader)
         avg_train_ssim = epoch_train_ssim / len(train_loader)
         
         # --- VALIDATION PHASE ---
         model.eval()
-        epoch_val_loss = 0.0
-        epoch_val_ssim = 0.0
-        progress_bar_val = tqdm(val_loader, desc=f"Epoch {epoch+1}/{n_epochs}")
+        epoch_validation_loss = 0.0
+        epoch_validation_ssim = 0.0
+        progress_bar_validation = tqdm(validation_loader, desc=f"Epoch {epoch+1}/{n_epochs}")
         
         with torch.no_grad():
-            for v, (x_sino_noisy_val, x_tv_val) in enumerate(progress_bar_val, start=1):
-                x_sino_noisy_val, x_tv_val = x_sino_noisy_val.to(device), x_tv_val.to(device)
+            for v, (x_sino_noisy_validation, x_tv_validation) in enumerate(progress_bar_validation, start=1):
+                x_sino_noisy_validation, x_tv_validation = x_sino_noisy_validation.to(device), x_tv_validation.to(device)
 
-                x_fbp_val = projector.FBP(x_sino_noisy_val)
+                x_fbp_validation = projector.FBP(x_sino_noisy_validation)
                 
                 with torch.cuda.amp.autocast(enabled=(device == "cuda")):
-                    y_val_pred = model(x_fbp_val)
-                    val_loss = loss_fn(y_val_pred, x_tv_val)
+                    y_validation_pred = model(x_fbp_validation)
+                    validation_loss = loss_fn(y_validation_pred, x_tv_validation)
                     
-                epoch_val_loss += val_loss.item()
-                ssim_val = SSIM(y_val_pred.detach(), x_tv_val.detach())
-                epoch_val_ssim += ssim_val.item() if hasattr(ssim_val, "item") else ssim_val
+                epoch_validation_loss += validation_loss.item()
+                ssim_validation = SSIM(y_validation_pred.detach(), x_tv_validation.detach())
+                epoch_validation_ssim += ssim_validation.item() if hasattr(ssim_validation, "item") else ssim_validation
                 
-        avg_val_loss = epoch_val_loss / len(val_loader)
-        avg_val_ssim = epoch_val_ssim / len(val_loader)
+        avg_validation_loss = epoch_validation_loss / len(validation_loader)
+        avg_validation_ssim = epoch_validation_ssim / len(validation_loader)
 
         # Update history
         loss_history["train"].append(avg_train_loss)
-        loss_history["val"].append(avg_val_loss)
+        loss_history["validation"].append(avg_validation_loss)
         ssim_history["train"].append(avg_train_ssim)
-        ssim_history["val"].append(avg_val_ssim)
+        ssim_history["validation"].append(avg_validation_ssim)
         
         if scheduler is not None:
             scheduler.step()
@@ -128,15 +128,15 @@ def train(
         print(
             f"({time_str}) Epoch {epoch+1:03d}/{n_epochs} | "
             f"Train Loss: {avg_train_loss:.4f} SSIM: {avg_train_ssim:.4f} | "
-            f"Val Loss: {avg_val_loss:.4f} SSIM: {avg_val_ssim:.4f}"
+            f"Validation Loss: {avg_validation_loss:.4f} SSIM: {avg_validation_ssim:.4f}"
         )
 
         # Save Best Model Strategy (Migliore di save_each per evitare overfitting)
-        if weights_path is not None and avg_val_loss < best_val_loss:
-            best_val_loss = avg_val_loss
+        if weights_path is not None and avg_validation_loss < best_validation_loss:
+            best_validation_loss = avg_validation_loss
             # Utilizza la tua funzione di salvataggio
             save(model, weights_path)
-            print(f" -> Checkpoint saved! New best val loss: {best_val_loss:.4f}")
+            print(f" -> Checkpoint saved! New best validation loss: {best_validation_loss:.4f}")
             
         # Optional period save 
         elif save_each is not None and (epoch + 1) % save_each == 0:
@@ -195,7 +195,7 @@ if __name__ == "__main__":
     print(f"Model checkpoints will be saved in: {weights_path}")
 
     # 3. Creazione Dataloaders (Usa la funzione che hai creato per i pazienti)
-    train_loader, val_loader, _ = get_dataloaders(
+    train_loader, validation_loader, _ = get_dataloaders(
         base_data_dir=args.base_data_dir, 
         angle=args.angle, 
         batch_size=args.batch_size
@@ -214,7 +214,7 @@ if __name__ == "__main__":
     history = train(
         model=model,
         train_loader=train_loader,
-        val_loader=val_loader,     
+        validation_loader=validation_loader,     
         optimizer=optimizer,
         loss_fn=nn.MSELoss(), 
         projector=projector,

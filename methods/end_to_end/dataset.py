@@ -11,7 +11,7 @@ Expected directory structure:
                                 ...
                         tv/
                             angle_090/
-                     val/
+                     validation/
                         sinograms/
                         tv/
                      test/
@@ -73,9 +73,9 @@ def get_dataloaders(base_data_dir: str, angle: str, batch_size: int = 8, num_wor
     train_sino = os.path.join(base_data_dir, "train", "sinograms", f"angle_{angle}")
     train_tv   = os.path.join(base_data_dir, "train", "tv", f"angle_{angle}")
     
-    # 2. Costruisci i percorsi esatti per VAL
-    val_sino = os.path.join(base_data_dir, "val", "sinograms", f"angle_{angle}")
-    val_tv   = os.path.join(base_data_dir, "val", "tv", f"angle_{angle}")
+    # 2. Costruisci i percorsi esatti per VALidation
+    validation_sino = os.path.join(base_data_dir, "validation", "sinograms", f"angle_{angle}")
+    validation_tv   = os.path.join(base_data_dir, "validation", "tv", f"angle_{angle}")
     
     # 3. Costruisci i percorsi esatti per TEST
     test_sino = os.path.join(base_data_dir, "test", "sinograms", f"angle_{angle}")
@@ -83,17 +83,17 @@ def get_dataloaders(base_data_dir: str, angle: str, batch_size: int = 8, num_wor
 
     # 4. Inizializza i Dataset
     train_ds = CTDataset(train_sino, train_tv)
-    val_ds   = CTDataset(val_sino, val_tv)
+    validation_ds   = CTDataset(validation_sino, validation_tv)
     test_ds  = CTDataset(test_sino, test_tv)
 
-    print(f"Dataset caricato (Angolo {angle}) -> Train: {len(train_ds)}, Val: {len(val_ds)}, Test: {len(test_ds)}")
+    print(f"Dataset caricato (Angolo {angle}) -> Train: {len(train_ds)}, Validation: {len(validation_ds)}, Test: {len(test_ds)}")
 
     # 5. Crea i DataLoader
     # pin_memory=True velocizza il passaggio dei dati CPU -> GPU
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers)
-    val_loader   = DataLoader(val_ds, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=num_workers)
+    validation_loader   = DataLoader(validation_ds, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=num_workers)
     
     # Il test loader di solito ha batch_size=1 per fare calcoli più precisi in fase di inferenza
     test_loader  = DataLoader(test_ds, batch_size=1, shuffle=False, pin_memory=True, num_workers=num_workers) 
 
-    return train_loader, val_loader, test_loader
+    return train_loader, validation_loader, test_loader
