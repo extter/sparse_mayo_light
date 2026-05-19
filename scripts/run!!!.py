@@ -26,23 +26,33 @@ def load_model(weights_path, device):
     return model
 
 
-def find_raw_file(raw_root, filename):
-    matches = list(Path(raw_root).rglob(filename))
-    if len(matches) == 0:
-        raise FileNotFoundError(f"Ground truth non trovata per {filename} in {raw_root}")
-    if len(matches) > 1:
-        raise RuntimeError(f"Trovati più file per {filename}: {matches}")
-    return matches[0]
+def build_raw_path(raw_root, filename):
+    stem = Path(filename).stem
+    parts = stem.split("_")
+
+    if len(parts) < 3:
+        raise ValueError(f"Filename non nel formato atteso: {filename}")
+
+    patient_id = parts[1]
+    slice_idx = parts[2]
+
+    raw_path = Path(raw_root) / patient_id / f"{slice_idx}.png"
+
+    if not raw_path.exists():
+        raise FileNotFoundError(f"Ground truth non trovata: {raw_path}")
+
+    return raw_path
 
 
 def main():
     base_data_dir = "data/dataset_nn"
-    angle = "180"
+    angle = "045"
     split = "test"
 
     weights_path = f"checkpoints/unet_angle_{angle}"
     reco_dir = Path("data/reco") / f"angles_{int(angle)}" / split
     raw_dir = Path("data/raw") / split
+    preprocessed_dir = Path("data/preprocessed") / split
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -82,25 +92,37 @@ def main():
     if not reco_path.exists():
         raise FileNotFoundError(f"Reco non trovata: {reco_path}")
 
-    raw_path = find_raw_file(raw_dir, filename)
+    preprocessed_path = preprocessed_dir / filename
+    if not preprocessed_path.exists():
+        raise FileNotFoundError(f"Preprocessed non trovata: {preprocessed_path}")
 
-    gt_img = np.load(raw_path).astype(np.float32)
+    raw_path = build_raw_path(raw_dir, filename)
+
+    gt_img = plt.imread(raw_path).astype(np.float32)
+    if gt_img.ndim == 3:
+        gt_img = gt_img[..., 0]
+
+    preprocessed_img = np.load(preprocessed_path).astype(np.float32)
     reco_img = np.load(reco_path).astype(np.float32)
     pred_img = pred.squeeze().detach().cpu().numpy()
 
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    fig, axes = plt.subplots(1, 4, figsize=(20, 5))
 
     axes[0].imshow(gt_img, cmap="gray")
     axes[0].set_title("Ground truth")
     axes[0].axis("off")
 
-    axes[1].imshow(reco_img, cmap="gray")
-    axes[1].set_title("Reco")
+    axes[1].imshow(preprocessed_img, cmap="gray")
+    axes[1].set_title("Preprocessed")
     axes[1].axis("off")
 
-    axes[2].imshow(pred_img, cmap="gray")
-    axes[2].set_title("Inference")
+    axes[2].imshow(reco_img, cmap="gray")
+    axes[2].set_title("Reco")
     axes[2].axis("off")
+
+    axes[3].imshow(pred_img, cmap="gray")
+    axes[3].set_title("Inference")
+    axes[3].axis("off")
 
     plt.tight_layout()
     plt.show()

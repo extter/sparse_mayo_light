@@ -1,7 +1,11 @@
 import torch
 import torch.nn as nn
+import sys
+from pathlib import Path
 
-from blocks import *
+ROOT = Path(__file__).resolve().parents[2]   # oppure parents[2], dipende da dove sta lo script
+sys.path.insert(0, str(ROOT))
+from methods.end_to_end.blocks import *
 
 
 blocks_dict = {
@@ -31,7 +35,7 @@ class UNet(nn.Module):
         self,
         ch_in: int = 1,
         ch_out: int = 1,
-        middle_ch: tuple[int] = (64, 128, 256, 512, 1024),
+        middle_ch: tuple[int] = (32, 64, 128, 256, 512),
         n_layers_per_block: int = 2,
         down_layers: tuple[str] = (
             "ResDownBlock",
@@ -100,6 +104,8 @@ class UNet(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        input_fbp = x
+
         skip_connections = []
 
         # Preprocess
@@ -118,9 +124,12 @@ class UNet(nn.Module):
             skip = skip_connections.pop()  # Retrieve last skip connection
             h = self.decoder_layers[l](h, skip)
 
+        artifacts = self.postprocess(h)
+
+
         if self.final_activation is not None:
             if self.final_activation.lower() == "sigmoid":
-                return torch.sigmoid(self.postprocess(h))
+                return torch.sigmoid(artifacts)
             elif self.final_activation.lower() == "relu":
-                return torch.relu(self.postprocess(h))
-        return self.postprocess(h)
+                return torch.relu(artifacts)
+        return input_fbp - artifacts

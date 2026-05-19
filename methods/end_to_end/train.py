@@ -9,6 +9,7 @@ import argparse
 import os 
 import time 
 import json 
+import matplotlib.pyplot as plt
 
 import sys
 from pathlib import Path
@@ -121,14 +122,14 @@ def train(
         ssim_history["validation"].append(avg_validation_ssim)
         
         if scheduler is not None:
-            scheduler.step()
+            print("sto usando lo scheduler")
 
         # Verbose
         time_str = formatted_time(start_time)
         print(
             f"({time_str}) Epoch {epoch+1:03d}/{n_epochs} | "
-            f"Train Loss: {avg_train_loss:.4f} SSIM: {avg_train_ssim:.4f} | "
-            f"Validation Loss: {avg_validation_loss:.4f} SSIM: {avg_validation_ssim:.4f}"
+            f"Train Loss: {avg_train_loss:.6f} SSIM: {avg_train_ssim:.4f} | "
+            f"Validation Loss: {avg_validation_loss:.6f} SSIM: {avg_validation_ssim:.4f}"
         )
 
         # Save Best Model Strategy (Migliore di save_each per evitare overfitting)
@@ -206,7 +207,10 @@ if __name__ == "__main__":
     projector = CTProjector(img_shape=(256, 256), det_size=256, angles=angles_array, force_cpu=False)
     
     # 4. Inizializzazione Modello e Ottimizzatore
-    model = UNet(ch_in=1, ch_out=1).to(device)
+    model = UNet(ch_in=1, middle_ch=(32, 64, 128, 256, 512), ch_out=1).to(device)
+    total = sum(p.numel() for p in model.parameters())
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Totale: {total:,}  |  Trainabili: {trainable:,}")
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
 
@@ -216,15 +220,44 @@ if __name__ == "__main__":
         train_loader=train_loader,
         validation_loader=validation_loader,     
         optimizer=optimizer,
-        loss_fn=nn.MSELoss(), 
+        loss_fn=MixedLoss(), 
         projector=projector,
         scheduler=scheduler,
-        save_each=5,
+        save_each=None,
         n_epochs=args.epochs,
         weights_path=weights_path,
         device=device
     )
-    
-    # Salva la history in un file JSON per i tuoi grafici finali
+
+
+
+    def plot_history(history: dict, save_dir: str):
+        epochs = range(1, len(history["loss"]["train"]) + 1)
+        
+        fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+        
+        # Loss
+        axes[0].plot(epochs, history["loss"]["train"],      label="Train")
+        axes[0].plot(epochs, history["loss"]["validation"], label="Validation")
+        axes[0].set_title("Loss")
+        axes[0].set_xlabel("Epoch")
+        axes[0].legend()
+        axes[0].grid(True)
+        
+        # SSIM
+        axes[1].plot(epochs, history["ssim"]["train"],      label="Train")
+        axes[1].plot(epochs, history["ssim"]["validation"], label="Validation")
+        axes[1].set_title("SSIM")
+        axes[1].set_xlabel("Epoch")
+        axes[1].legend()
+        axes[1].grid(True)
+        
+        plt.tight_layout()
+        plt.savefig(f"{save_dir}/training_curves.png", dpi=150)
+        plt.close()
+        print(f"Plot salvato in {save_dir}/training_curves.png")
+
+        # Salva la history in un file JSON per i tuoi grafici finali
     with open(f"{weights_path}/history.json", "w") as f:
         json.dump(history, f)
+        plot_history(history, weights_path)
