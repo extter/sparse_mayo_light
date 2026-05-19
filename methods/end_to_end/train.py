@@ -60,7 +60,7 @@ def train(
     ssim_history = {"train": [], "validation": []}
     
     best_validation_loss = float('inf')
-    scaler = torch.cuda.amp.GradScaler(enabled=(device == "cuda"))
+    scaler = torch.amp.GradScaler("cuda", enabled=(device == "cuda"))
 
     for epoch in range(n_epochs):
         
@@ -76,7 +76,7 @@ def train(
 
             optimizer.zero_grad()
             
-            with torch.cuda.amp.autocast(enabled=(device == "cuda")):
+            with torch.amp.autocast("cuda", enabled=(device == "cuda")):
                 y_pred = model(x_fbp)
                 loss = loss_fn(y_pred, x_tv)
                 
@@ -103,7 +103,7 @@ def train(
 
                 x_fbp_validation = projector.FBP(x_sino_noisy_validation)
                 
-                with torch.cuda.amp.autocast(enabled=(device == "cuda")):
+                with torch.amp.autocast("cuda", enabled=(device == "cuda")):
                     y_validation_pred = model(x_fbp_validation)
                     validation_loss = loss_fn(y_validation_pred, x_tv_validation)
                     
