@@ -46,7 +46,7 @@ def build_raw_path(raw_root, filename):
 
 def main():
     base_data_dir = "data/dataset_nn"
-    angle = "045"
+    angle = "060"
     split = "test"
 
     weights_path = f"checkpoints/unet_angle_{angle}"
@@ -65,12 +65,14 @@ def main():
 
     x_sino, x_tv = next(iter(test_loader))
 
-    sample_idx = 0
+    sample_idx = 100
     sample_path = Path(test_loader.dataset.input_files[sample_idx])
     filename = sample_path.name
     print(f"Sample usato: {filename}")
 
-    x_sino = x_sino.to(device, non_blocking=True)
+    # Carica direttamente il sample corretto
+    x_sino, x_tv = test_loader.dataset[sample_idx]
+    x_sino = x_sino.unsqueeze(0).to(device, non_blocking=True)  # aggiungi batch dimension
 
     model = load_model(weights_path, device)
 
@@ -106,23 +108,34 @@ def main():
     reco_img = np.load(reco_path).astype(np.float32)
     pred_img = pred.squeeze().detach().cpu().numpy()
 
-    fig, axes = plt.subplots(1, 4, figsize=(20, 5))
+    with torch.no_grad():
+        x_fbp = projector.FBP(x_sino)
+        # Normalizzazione per immagine
+        x_min = x_fbp.amin(dim=(1,2,3), keepdim=True)
+        x_max = x_fbp.amax(dim=(1,2,3), keepdim=True)
+        x_fbp_norm = (x_fbp - x_min) / (x_max - x_min + 1e-8)
+        pred = model(x_fbp_norm)
+        pred = torch.clamp(pred, 0.0, 1.0)
 
+    fbp_img = x_fbp_norm.squeeze().detach().cpu().numpy()
+
+
+    fig, axes = plt.subplots(1, 5, figsize=(25, 5))
     axes[0].imshow(gt_img, cmap="gray")
     axes[0].set_title("Ground truth")
     axes[0].axis("off")
-
     axes[1].imshow(preprocessed_img, cmap="gray")
     axes[1].set_title("Preprocessed")
     axes[1].axis("off")
-
     axes[2].imshow(reco_img, cmap="gray")
     axes[2].set_title("Reco")
     axes[2].axis("off")
-
-    axes[3].imshow(pred_img, cmap="gray")
-    axes[3].set_title("Inference")
+    axes[3].imshow(fbp_img, cmap="gray")
+    axes[3].set_title("FBP corrotta")
     axes[3].axis("off")
+    axes[4].imshow(pred_img, cmap="gray")
+    axes[4].set_title("Inference")
+    axes[4].axis("off")
 
     plt.tight_layout()
     plt.show()
