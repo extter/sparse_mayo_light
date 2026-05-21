@@ -34,10 +34,6 @@ from dataset import *
 from losses import MixedLoss
 
 
-
-
-
-
 def train(
     model: nn.Module,
     train_loader: DataLoader,
@@ -74,7 +70,11 @@ def train(
         for t, (x_sino_noisy, x_tv) in enumerate(progress_bar, start=1):
             x_sino_noisy, x_tv = x_sino_noisy.to(device), x_tv.to(device)
             x_fbp = projector.FBP(x_sino_noisy)
-
+            #print(x_fbp.min(), x_fbp.max())  # controlla il range
+           # Normalizzazione per immagine (dim=(1,2,3) per tensore N,C,H,W)
+            x_min = x_fbp.amin(dim=(1,2,3), keepdim=True)
+            x_max = x_fbp.amax(dim=(1,2,3), keepdim=True)
+            x_fbp = (x_fbp - x_min) / (x_max - x_min + 1e-8)
             optimizer.zero_grad()
             
             with torch.amp.autocast("cuda", enabled=(device == "cuda")):
@@ -103,7 +103,11 @@ def train(
                 x_sino_noisy_validation, x_tv_validation = x_sino_noisy_validation.to(device), x_tv_validation.to(device)
 
                 x_fbp_validation = projector.FBP(x_sino_noisy_validation)
-                
+                # Normalizzazione per immagine (dim=(1,2,3) per tensore N,C,H,W)
+                x_min_validation = x_fbp_validation.amin(dim=(1,2,3), keepdim=True)
+                x_max_validation = x_fbp_validation.amax(dim=(1,2,3), keepdim=True)
+                x_fbp_validation = (x_fbp_validation - x_min_validation) / (x_max_validation - x_min_validation + 1e-8)
+
                 with torch.amp.autocast("cuda", enabled=(device == "cuda")):
                     y_validation_pred = model(x_fbp_validation)
                     validation_loss = loss_fn(y_validation_pred, x_tv_validation)
@@ -122,7 +126,10 @@ def train(
         ssim_history["validation"].append(avg_validation_ssim)
         
         if scheduler is not None:
-            print("sto usando lo scheduler")
+            print("scheduler c'è")
+            scheduler.step()
+        else:
+            print("scheduler non c'è")
 
         # Verbose
         time_str = formatted_time(start_time)

@@ -3,7 +3,7 @@ Costruction of dataloader for end-to-end architecture for CT reconstruction of t
 using TV images as targets.
 
 Expected directory structure:
-    data/nn_dataset/
+    data/dataset_nn/
                      train/
                         sinograms/ 
                             angle_090/
@@ -53,7 +53,10 @@ class CTDataset(Dataset):
     def __getitem__(self, idx):
         # Caricamento file binari (preserva i float32 essenziali per la TV)
         x = np.load(self.input_files[idx]).astype(np.float32)
+        # print(f"Sinogramma corrotto min: {x.min():.4f}, max: {x.max():.4f}, mean: {x.mean():.4f}")
+
         y = np.load(self.target_files[idx]).astype(np.float32)
+        # print(f"Target immagine reco min: {y.min():.4f}, max: {y.max():.4f}, mean: {y.mean():.4f}")
 
         # Converti in tensori e aggiungi la dimensione del canale (1, 256, 256)
         x = torch.from_numpy(x).unsqueeze(0)
@@ -90,10 +93,10 @@ def get_dataloaders(base_data_dir: str, angle: str, batch_size: int = 8, num_wor
 
     # 5. Crea i DataLoader
     # pin_memory=True velocizza il passaggio dei dati CPU -> GPU
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers)
-    validation_loader   = DataLoader(validation_ds, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=num_workers)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=0)
+    validation_loader   = DataLoader(validation_ds, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=0)
     
     # Il test loader di solito ha batch_size=1 per fare calcoli più precisi in fase di inferenza
-    test_loader  = DataLoader(test_ds, batch_size=1, shuffle=False, pin_memory=True, num_workers=num_workers) 
+    test_loader  = DataLoader(test_ds, batch_size=1, shuffle=False, pin_memory=True, num_workers=0) 
 
     return train_loader, validation_loader, test_loader
