@@ -25,9 +25,9 @@ data/sinogram_corrupted/
 data/reco/
 data/lamda_choice/
 
-#tutte le immagini
-*.png
-*.npy
+#tutte le immagini in data
+data/*.png
+data/*.npy
 
 #tutti i weights
 *.pth
