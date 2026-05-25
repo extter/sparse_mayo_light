@@ -35,16 +35,14 @@ class UNet(nn.Module):
         self,
         ch_in: int = 1,
         ch_out: int = 1,
-        middle_ch: tuple[int] = (32, 64, 128, 256, 512),
+        middle_ch: tuple[int] = (16, 32, 64, 128),
         n_layers_per_block: int = 2,
         down_layers: tuple[str] = (
             "ResDownBlock",
             "ResDownBlock",
             "ResDownBlock",
-            "ResDownBlock",
         ),
         up_layers: tuple[str] = (
-            "ResUpBlock",
             "ResUpBlock",
             "ResUpBlock",
             "ResUpBlock",
@@ -132,4 +130,4 @@ class UNet(nn.Module):
                 return torch.sigmoid(artifacts)
             elif self.final_activation.lower() == "relu":
                 return torch.relu(artifacts)
-        return input_fbp - artifacts
+        return artifacts

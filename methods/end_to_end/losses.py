@@ -109,12 +109,3 @@ class MixedLoss(nn.Module):
         mse_loss = F.mse_loss(pred, target)
 
         return self.w_ssim * ssim_loss + self.w_l1 * l1_loss + self.w_mse * mse_loss
-
-
-
-
-
-
-
-
-    
