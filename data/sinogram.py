@@ -17,13 +17,14 @@ def get_device():
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def create_operators_dict(angle_configs, image_size):
+def create_operators_dict(angle_configs, image_size, det_size):
     """
     Crea un dizionario di operatori CTProjector, uno per ogni configurazione angolare.
 
     Args:
         angle_configs (list[int]): lista dei numeri di angoli, es. [180, 90, 60, 45]
         image_size (int): dimensione immagine quadrata
+        det_size (int): dimensione detector
 
     Returns:
         dict[int, CTProjector]
@@ -34,7 +35,7 @@ def create_operators_dict(angle_configs, image_size):
         K = operators.CTProjector(
             img_shape=(image_size, image_size),
             angles=np.linspace(0, np.pi, n_angles, endpoint=False),
-            det_size=image_size,
+            det_size=det_size,
             geometry="parallel",
             force_cpu=False,
         )
