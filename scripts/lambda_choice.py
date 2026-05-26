@@ -42,6 +42,7 @@ def load_config():
 
     required_keys = [
         "image_size",
+        "det_size",
         "angle_configs",
         "maxiter",
         "p",
@@ -140,6 +141,7 @@ def main():
     config = load_config()
 
     image_size = config["image_size"]
+    det_size = config["det_size"]
     angle_configs = config["angle_configs"]
     maxiter = config["maxiter"]
     p = config["p"]
@@ -155,7 +157,7 @@ def main():
 
     print(f"Using device: {device}")
     print(
-        f"image_size={image_size}, angle_configs={angle_configs}, "
+        f"image_size={image_size}, det_size={det_size}, angle_configs={angle_configs}, "
         f"maxiter={maxiter}, p={p}, batch_size={batch_size}, "
         f"subset_size={subset_size}"
     )
@@ -163,12 +165,14 @@ def main():
     _, dataloaders = create_sinogram_dataloaders(
         base_data_path=BASE_DATA_PATH,
         angle_configs=angle_configs,
+        det_size=det_size,
         batch_size=batch_size,
     )
 
     operators_dict = create_operators_dict(
         angle_configs=angle_configs,
         image_size=image_size,
+        det_size=det_size,
     )
 
     results = {}
