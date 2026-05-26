@@ -38,7 +38,7 @@ def load_config():
     with open(data_config_path, "r") as f:
         config = yaml.safe_load(f)
 
-    required_keys = ["image_size", "angle_configs", "noise_level"]
+    required_keys = ["image_size", "det_size", "angle_configs", "noise_level"]
     for key in required_keys:
         if key not in config:
             raise KeyError(f"Missing key '{key}' in {data_config_path}")
@@ -65,6 +65,7 @@ def main():
 
     config = load_config()
     image_size = config["image_size"]
+    det_size = config["det_size"]
     angle_configs = config["angle_configs"]
     noise_level = config["noise_level"]
 
@@ -72,7 +73,7 @@ def main():
 
     print(f"Using device: {device}")
     print(
-        f"image_size={image_size}, angle_configs={angle_configs}, noise_level={noise_level}"
+        f"image_size={image_size}, det_size={det_size}, angle_configs={angle_configs}, noise_level={noise_level}"
     )
 
     check_directories(angle_configs)
@@ -80,6 +81,7 @@ def main():
     operators_dict = create_operators_dict(
         angle_configs=angle_configs,
         image_size=image_size,
+        det_size=det_size,
     )
 
     for split in SPLITS:

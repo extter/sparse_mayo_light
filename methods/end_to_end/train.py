@@ -254,7 +254,7 @@ if __name__ == "__main__":
 
     n_angles = int(args.angle)
     angles_array = np.linspace(0, np.pi, n_angles, endpoint=False)
-    projector = CTProjector(img_shape=(256, 256), det_size=256, angles=angles_array, force_cpu=False, geometry="parallel")
+    projector = CTProjector(img_shape=(256, 256), det_size=512, angles=angles_array, force_cpu=False, geometry="parallel")
     
     # 4. Inizializzazione Modello e Ottimizzatore
     model = UNet(ch_in=1, middle_ch=(16, 32, 64, 128), ch_out=1).to(device)

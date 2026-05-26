@@ -80,7 +80,7 @@ def main():
     angles_array = np.linspace(0, np.pi, n_angles, endpoint=False)
     projector = CTProjector(
         img_shape=(256, 256),
-        det_size=256,
+        det_size=512,
         angles=angles_array,
         force_cpu=(device.type == "cpu")
     )
