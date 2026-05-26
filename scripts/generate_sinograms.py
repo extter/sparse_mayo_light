@@ -99,7 +99,6 @@ def main():
             sinogram_corrupted_path=SINOGRAM_CORRUPTED_PATH,
             operators_dict=operators_dict,
             angle_configs=angle_configs,
-            det_size=det_size,
             noise_level=noise_level,
             device=device,
         )
