@@ -1,0 +1,23 @@
+{
+  "ch_in": 1,
+  "ch_out": 1,
+  "middle_ch": [
+    16,
+    32,
+    64,
+    128
+  ],
+  "n_layers_per_block": 2,
+  "down_layers": [
+    "ResDownBlock",
+    "ResDownBlock",
+    "ResDownBlock"
+  ],
+  "up_layers": [
+    "ResUpBlock",
+    "ResUpBlock",
+    "ResUpBlock"
+  ],
+  "n_heads": null,
+  "final_activation": null
+}

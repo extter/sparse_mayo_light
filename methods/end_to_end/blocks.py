@@ -6,7 +6,7 @@ import torch.nn.functional as F
 # ---- Define Basic Blocks ----
 class ConvBlock(nn.Module):
     r"""
-    Defines a ConvBlock layer, consisting in two 3x3 convolutions with a stride of 1, each followed by a BatchNorm2d layer
+    Defines a ConvBlock layer, consisting in two 3x3 convolutions with a stride of 1, each followed by a InstanceNorm2d layer
     and a ReLU activation function.
     """
 
@@ -15,7 +15,7 @@ class ConvBlock(nn.Module):
 
         self.conv = (
             nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=1, padding=1, bias=True),
-            nn.BatchNorm2d(ch_out),
+            #nn.InstanceNorm2d(ch_out),
             nn.ReLU(inplace=True),
         )
         for _ in range(n_layers_per_block - 1):
@@ -23,7 +23,7 @@ class ConvBlock(nn.Module):
                 nn.Conv2d(
                     ch_out, ch_out, kernel_size=3, stride=1, padding=1, bias=True
                 ),
-                nn.BatchNorm2d(ch_out),
+                #nn.InstanceNorm2d(ch_out),
                 nn.ReLU(inplace=True),
             )
         self.conv = nn.Sequential(*self.conv)
@@ -35,7 +35,7 @@ class ConvBlock(nn.Module):
 
 class ResidualConvBlock(nn.Module):
     r"""
-    Defines a ResidualConvBlock layer, consisting in two 3x3 convolutions with a stride of 1, each followed by a BatchNorm2d layer
+    Defines a ResidualConvBlock layer, consisting in two 3x3 convolutions with a stride of 1, each followed by a InstanceNorm2d layer
     and a ReLU activation function. After the convolution is applied, a skip connection between input and output is added.
     """
 
@@ -44,7 +44,7 @@ class ResidualConvBlock(nn.Module):
 
         self.conv = (
             nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=1, padding=1, bias=True),
-            nn.BatchNorm2d(ch_out),
+            #nn.InstanceNorm2d(ch_out),
             nn.ReLU(inplace=True),
         )
         for _ in range(n_layers_per_block - 1):
@@ -52,7 +52,7 @@ class ResidualConvBlock(nn.Module):
                 nn.Conv2d(
                     ch_out, ch_out, kernel_size=3, stride=1, padding=1, bias=True
                 ),
-                nn.BatchNorm2d(ch_out),
+                #nn.InstanceNorm2d(ch_out),
                 nn.ReLU(inplace=True),
             )
         self.conv = nn.Sequential(*self.conv)
