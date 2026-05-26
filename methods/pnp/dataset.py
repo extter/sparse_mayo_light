@@ -5,14 +5,11 @@ import torch
 from torch.utils.data import Dataset
 
 class GaussianNoiseDataset(Dataset):
-    def __init__ (self, gt_dir, json_path, split="train"):
+    def __init__ (self, gt_dir, split="train"):
         self.gtdir = gt_dir
         self.split = split
-
-        with open(json_path, 'r') as f:
-            split_dict = json.load(f)
         
-        self.filenames = split_dict[split]
+        self.filenames = sorted([f for f in os.listdir(self.gtdir) if f.endswith('.npy')])
 
     def __len__(self):
         return len(self.filenames)
