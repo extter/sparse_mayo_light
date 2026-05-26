@@ -7,14 +7,15 @@ import torch.nn as nn
 from torch.optim import Adam
 
 
-from torch.utils.data import Dataloader
+from torch.utils.data import DataLoader
 
 from methods.pnp.dataset import GaussianNoiseDataset
 from methods.end_to_end.unet import UNet
 
 # PATH CONFIGURATION 
-gt_dir = "../../data/mayo" #DA CAMBIARE 
-json_path = "../../data/mayo/split.json"#DA CAMBIARE 
+gt_train = "../../data/mayo/train" #DA CAMBIARE 
+gt_val = "../../data/mayo/validation" #DA CAMBIARE
+
 
 
 # PARAMETERS CONFIGURATION
@@ -24,11 +25,11 @@ EPOCHS = 50
 LR = 1e-4
 
 # DATALOADER INITIALIZATION 
-train_dataset = GaussianNoiseDataset(gt_dir, json_path, split="train")
-train_dataloader = Dataloader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+train_dataset = GaussianNoiseDataset(gt_train, split="train")
+train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-val_dataset = GaussianNoiseDataset(gt_dir, json_path, split="val")
-val_dataloader = Dataloader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+val_dataset = GaussianNoiseDataset(gt_val, split="val")
+val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 model = UNet(in_channels=1, out_channels=1).to(DEVICE)
 optimizer = Adam(model.parameters(), lr=LR)
