@@ -5,7 +5,7 @@ from tqdm import tqdm
 import torch 
 import torch.nn as nn 
 from torch.optim import Adam
-
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from torch.utils.data import DataLoader
 
@@ -20,9 +20,9 @@ gt_val = "../../data/mayo/validation" #DA CAMBIARE
 
 # PARAMETERS CONFIGURATION
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 4
+BATCH_SIZE = 16
 EPOCHS = 50 
-LR = 1e-4
+LR = 1e-3
 
 # DATALOADER INITIALIZATION 
 train_dataset = GaussianNoiseDataset(gt_train, split="train")
@@ -31,9 +31,12 @@ train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True
 val_dataset = GaussianNoiseDataset(gt_val, split="val")
 val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-model = UNet(in_channels=1, out_channels=1).to(DEVICE)
+model = UNet(ch_in=1, ch_out=1, middle_ch=(16, 32, 64, 128)).to(DEVICE)
 optimizer = Adam(model.parameters(), lr=LR)
-criterion = nn.MSELoss() # Anche questa forse da cambiare 
+
+scheduler = ReduceLROnPlateau(optimizer, mode='min', factor = 0.5, patience=2, verbose=True)
+criterion_l1 = nn.L1Loss()
+criterion_l2 = nn.MSELoss() 
 
 scaler = torch.cuda.amp.GradScaler()
 
@@ -56,9 +59,17 @@ for epoch in range(EPOCHS):
 
         with torch.cuda.amp.autocast():
             outputs = model(noisy_images)
-            loss = criterion(outputs, clean_images)
+            
+            loss_l1 = criterion_l1(outputs, clean_images)
+            loss_l2 = criterion_l2(outputs, clean_images)
+            loss = 0.5 * loss_l1 + 0.5 * loss_l2
         
         scaler.scale(loss).backward()
+
+        # Gradient clipping
+        scaler.unscale_(optimizer)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
         scaler.step(optimizer)
         scaler.update()
 
@@ -79,12 +90,19 @@ for epoch in range(EPOCHS):
 
             with torch.cuda.amp.autocast():
                 outputs = model(noisy_images)
-                loss = criterion(outputs, clean_images)
+                v_loss_l1 = criterion_l1(outputs, clean_images)
+                v_loss_l2 = criterion_l2(outputs, clean_images)
+                loss = 0.5 * v_loss_l1 + 0.5 * v_loss_l2
             
             val_loss += loss.item()
             val_progress_bar.set_postfix({'val_loss': f"{loss.item():.4f}"})
     
     avg_val_loss = val_loss / len(val_dataloader)
+
+    scheduler.step(avg_val_loss)
+    current_lr = optimizer.param_groups[0]['lr']
+    print(f"Current Learning Rate: {current_lr}")
+
     print(f"Epoch {epoch+1:02d}/{EPOCHS:02d} | Train Loss: {avg_train_loss:.5f} | Val Loss: {avg_val_loss:.5f}")
 
     if avg_val_loss < best_val_loss:

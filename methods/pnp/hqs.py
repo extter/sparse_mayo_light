@@ -11,7 +11,7 @@ class PnpHQS_Solver(nn.Module):
         super().__init__()
         self.device = torch.device(device if torch.cuda.is_available() else 'cpu')
 
-        self.denoiser = UNet(in_channels=1, out_channels=1).to(device)
+        self.denoiser = UNet(ch_in=1, ch_out=1, middle_ch=(32, 64, 128, 256)).to(self.device)
         self.denoiser.load_state_dict(torch.load(denoiser_path, map_location=device))
         self.denoiser().to(device)
         
@@ -20,8 +20,8 @@ class PnpHQS_Solver(nn.Module):
         for param in self.denoiser.parameters():
             param.requires_grad = False
 
-        def reconstruct(self, sinogram, projector, num_iterations=20, mu=0.1, step=0.01):
-
+    def reconstruct(self, sinogram, projector, num_iterations=20, mu=0.1, step=0.01):
+        with torch.no_grad():
             y = sinogram.to(self.device)
             
             # Initialiazition (Starting from noisy_sinogram)
@@ -42,7 +42,7 @@ class PnpHQS_Solver(nn.Module):
                 grad_coupling = mu * (x - z)
                 grad = grad_physics + grad_coupling
 
-                z = x - step * grad
+                x = x - step * grad
 
                 x = torch.clamp(x, min=0.0, max=1.0)
 
