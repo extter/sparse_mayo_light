@@ -34,7 +34,7 @@ val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 model = UNet(ch_in=1, ch_out=1, middle_ch=(16, 32, 64, 128)).to(DEVICE)
 optimizer = Adam(model.parameters(), lr=LR)
 
-scheduler = ReduceLROnPlateau(optimizer, mode='min', factor = 0.5, patience=2, verbose=True)
+scheduler = ReduceLROnPlateau(optimizer, mode='min', factor = 0.5, patience=2)
 criterion_l1 = nn.L1Loss()
 criterion_l2 = nn.MSELoss() 
 

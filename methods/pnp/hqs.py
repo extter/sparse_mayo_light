@@ -13,7 +13,7 @@ class PnpHQS_Solver(nn.Module):
 
         self.denoiser = UNet(ch_in=1, ch_out=1, middle_ch=(32, 64, 128, 256)).to(self.device)
         self.denoiser.load_state_dict(torch.load(denoiser_path, map_location=device))
-        self.denoiser().to(device)
+        self.denoiser.to(device)
         
         self.denoiser.eval()
 
