@@ -165,7 +165,6 @@ def main():
     _, dataloaders = create_sinogram_dataloaders(
         base_data_path=BASE_DATA_PATH,
         angle_configs=angle_configs,
-        det_size=det_size,
         batch_size=batch_size,
     )
 

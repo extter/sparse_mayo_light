@@ -49,7 +49,7 @@ def main():
     angle = "060"
     split = "test"
 
-    weights_path = f"checkpoints/unet_angle_{angle}/20260525_150155/"
+    weights_path = f"checkpoints/unet_angle_{angle}/20260527_115105/"
     reco_dir = Path("data/reco") / f"angles_{int(angle)}" / split
     raw_dir = Path("data/raw") / split
     preprocessed_dir = Path("data/preprocessed") / split
