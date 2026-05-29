@@ -55,7 +55,7 @@ def visualize_sample(model, dataset, K, device, n_angles, title=''):
     target  = target.unsqueeze(0).to(device)
 
     with torch.no_grad():
-        x_fbp = K.FBP(y_delta)
+        x_fbp = torch.clamp(K.FBP(y_delta), min=0.0, max=1.0)
         x_rec = model(x_fbp)
 
     mse_fbp  = torch.mean((x_fbp - target) ** 2).item()
@@ -115,6 +115,8 @@ for n_angles in ANGLE_CONFIGS:
         num_epochs=NUM_EPOCHS,
         lr=LR,
         loss_name=LOSS_NAME,
+        use_scheduler=True,   # <-- aggiungi
+        eta_min=1e-6,         # <-- aggiungi (opzionale, default già impostato)
     )
 
     plot_loss_curves(train_loss_history, val_loss_history, val_ssim_history, val_psnr_history)
@@ -163,7 +165,7 @@ for n_angles in ANGLE_CONFIGS:
             y_delta_batch = y_delta_batch.to(device)
             target_batch  = target_batch.to(device)
 
-            x_fbp = K.FBP(y_delta_batch)
+            x_fbp = torch.clamp(K.FBP(y_delta_batch), min=0.0, max=1.0)
             x_rec = model(x_fbp)
 
             total_mse_fbp  += torch.mean((x_fbp - target_batch) ** 2).item()

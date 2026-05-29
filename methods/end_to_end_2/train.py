@@ -7,6 +7,11 @@ from tqdm.auto import tqdm
 
 from .losses import get_loss
 
+from torch.optim.lr_scheduler import CosineAnnealingLR
+
+def _print_tensor_stats(name: str, t: torch.Tensor):
+    print(f'  {name:20s} | min={t.min():.4f}  max={t.max():.4f}  mean={t.mean():.4f}  std={t.std():.4f}')
+
 
 def train_one_epoch(model, train_loader, optimizer, loss_fn, K, device, epoch, num_epochs):
     model.train()
@@ -14,14 +19,25 @@ def train_one_epoch(model, train_loader, optimizer, loss_fn, K, device, epoch, n
     progress_bar = tqdm(train_loader, desc=f'Epoch {epoch + 1}/{num_epochs} [train]', leave=True)
 
     for step, (x_batch, y_delta_batch, target_batch) in enumerate(progress_bar, start=1):
-        x_batch = x_batch.to(device)
+        x_batch       = x_batch.to(device)
         y_delta_batch = y_delta_batch.to(device)
-        target_batch = target_batch.to(device)
+        target_batch  = target_batch.to(device)
 
         with torch.no_grad():
-            x_fbp = K.FBP(y_delta_batch)
+            x_fbp = torch.clamp(K.FBP(y_delta_batch), min=0.0, max=1.0)
+        '''        # --- diagnostica solo al primo step del primo epoch ---
+        if epoch == 0 and step == 1:
+            print('\n[DEBUG] Statistiche tensori (primo batch):')
+            _print_tensor_stats('raw PNG (x)',       x_batch)
+            _print_tensor_stats('sinogram corrotto', y_delta_batch)
+            _print_tensor_stats('reco target',       target_batch)
+            _print_tensor_stats('FBP output',        x_fbp)
+            print()'''
+
 
         x_pred = model(x_fbp)
+        _print_tensor_stats('UNet output',       x_pred)
+
         loss = loss_fn(x_pred, target_batch)
 
         optimizer.zero_grad()
@@ -52,7 +68,7 @@ def validate(model, val_loader, loss_fn, K, device, epoch, num_epochs):
             y_delta_batch = y_delta_batch.to(device)
             target_batch = target_batch.to(device)
 
-            x_fbp = K.FBP(y_delta_batch)
+            x_fbp = torch.clamp(K.FBP(y_delta_batch), min=0.0, max=1.0)
             x_pred = model(x_fbp)
             x_pred_clamped = torch.clamp(x_pred, 0.0, 1.0)
 
@@ -79,9 +95,13 @@ def train(
     num_epochs=10,
     lr=1e-3,
     loss_name='mixed',
+    use_scheduler=True,       # <-- nuovo
+    eta_min=1e-6,             # <-- LR minimo a fine annealing
 ):
     loss_fn = get_loss(loss_name).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    
+    scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=eta_min) if use_scheduler else None
 
     train_loss_history = []
     val_loss_history = []
@@ -90,6 +110,8 @@ def train(
     best_ssim = -1.0
 
     print(f'Loss function: {loss_name}')
+    if scheduler:
+        print(f'Scheduler: CosineAnnealingLR (T_max={num_epochs}, eta_min={eta_min})')
 
     for epoch in range(num_epochs):
         train_loss = train_one_epoch(
@@ -99,17 +121,22 @@ def train(
             model, val_loader, loss_fn, K, device, epoch, num_epochs
         )
 
+        if scheduler:
+            scheduler.step()
+
         train_loss_history.append(train_loss)
         val_loss_history.append(val_loss)
         val_ssim_history.append(val_ssim)
         val_psnr_history.append(val_psnr)
 
+        current_lr = optimizer.param_groups[0]['lr']
         print(
             f'Epoch {epoch + 1}/{num_epochs} | '
             f'Train loss: {train_loss:.6f} | '
             f'Val loss: {val_loss:.6f} | '
             f'Val SSIM: {val_ssim:.4f} | '
-            f'Val PSNR: {val_psnr:.2f} dB'
+            f'Val PSNR: {val_psnr:.2f} dB | '
+            f'LR: {current_lr:.2e}'        # <-- utile per vedere il decay
         )
 
         if val_ssim > best_ssim:

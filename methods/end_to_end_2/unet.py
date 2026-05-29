@@ -9,7 +9,7 @@ class SimpleUNet(nn.Module):
         self.enc1 = DoubleConv(in_ch, base_ch)
         self.enc2 = DownBlock(base_ch, 2 * base_ch)
         self.enc3 = DownBlock(2 * base_ch, 4 * base_ch)
-        self.bottleneck = DownBlock(4 * base_ch, 8 * base_ch)
+        self.bottleneck = DoubleConv(4 * base_ch, 8 * base_ch)
         self.dec3 = UpBlock(8 * base_ch, 4 * base_ch, 4 * base_ch)
         self.dec2 = UpBlock(4 * base_ch, 2 * base_ch, 2 * base_ch)
         self.dec1 = UpBlock(2 * base_ch, base_ch, base_ch)
