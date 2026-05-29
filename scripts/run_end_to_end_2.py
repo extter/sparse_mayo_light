@@ -6,6 +6,7 @@ poi fa l'inference e visualizza i risultati su tutto il test set.
 import sys
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import torch
 from torchmetrics.functional.image import structural_similarity_index_measure
 
@@ -23,8 +24,6 @@ from methods.end_to_end_2 import (
 # ---------------------------------------------------------------------------
 # Setup
 # ---------------------------------------------------------------------------
-print( Path(__file__).resolve().parents[1])
-
 book_root = Path(__file__).resolve().parents[1]
 data_root = (book_root / 'data').resolve()
 weights_dir = book_root / 'methods' / 'end_to_end_2' / 'weights'
@@ -45,6 +44,47 @@ print('Device:', device)
 print('Data root:', data_root)
 print('Weights dir:', weights_dir)
 print('Loss:', LOSS_NAME)
+
+
+def visualize_sample(model, dataset, K, device, n_angles, title=''):
+    """Visualizza una tripla (raw, reco gt, FBP, UNet) dal primo sample del dataset."""
+    model.eval()
+    x_true, y_delta, target = dataset[0]
+    x_true  = x_true.unsqueeze(0).to(device)
+    y_delta = y_delta.unsqueeze(0).to(device)
+    target  = target.unsqueeze(0).to(device)
+
+    with torch.no_grad():
+        x_fbp = K.FBP(y_delta)
+        x_rec = model(x_fbp)
+
+    mse_fbp  = torch.mean((x_fbp - target) ** 2).item()
+    mse_unet = torch.mean((x_rec - target) ** 2).item()
+    ssim_fbp  = structural_similarity_index_measure(x_fbp, target, data_range=1.0).item()
+    ssim_unet = structural_similarity_index_measure(x_rec, target, data_range=1.0).item()
+
+    fig, axes = plt.subplots(1, 4, figsize=(18, 4))
+    fig.suptitle(title, fontsize=13)
+
+    axes[0].imshow(x_true.cpu().squeeze(), cmap='gray')
+    axes[0].set_title('Raw (ground truth)')
+    axes[0].axis('off')
+
+    axes[1].imshow(target.cpu().squeeze(), cmap='gray')
+    axes[1].set_title('Reco (target)')
+    axes[1].axis('off')
+
+    axes[2].imshow(x_fbp.cpu().squeeze(), cmap='gray')
+    axes[2].set_title(f'FBP\nMSE={mse_fbp:.4f} | SSIM={ssim_fbp:.4f}')
+    axes[2].axis('off')
+
+    axes[3].imshow(x_rec.cpu().squeeze(), cmap='gray')
+    axes[3].set_title(f'UNet\nMSE={mse_unet:.4f} | SSIM={ssim_unet:.4f}')
+    axes[3].axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
 
 # ---------------------------------------------------------------------------
 # Training loop su tutti i numeri di angoli
@@ -79,6 +119,16 @@ for n_angles in ANGLE_CONFIGS:
 
     plot_loss_curves(train_loss_history, val_loss_history, val_ssim_history)
 
+    # Carica i pesi migliori e visualizza un sample del test set
+    best_model = SimpleUNet(in_ch=1, out_ch=1, base_ch=32)
+    best_model.load_state_dict(torch.load(weights_path, map_location='cpu', weights_only=True))
+    best_model = best_model.to(device)
+
+    visualize_sample(
+        best_model, test_dataset, K, device, n_angles,
+        title=f'Risultato dopo training | {n_angles} angoli | loss={LOSS_NAME}',
+    )
+
 # ---------------------------------------------------------------------------
 # Inference su tutto il test set per tutti i numeri di angoli
 # ---------------------------------------------------------------------------
@@ -101,24 +151,24 @@ for n_angles in ANGLE_CONFIGS:
     model = model.to(device)
     model.eval()
 
-    total_mse_fbp = 0.0
+    total_mse_fbp  = 0.0
     total_mse_unet = 0.0
-    total_ssim_fbp = 0.0
+    total_ssim_fbp  = 0.0
     total_ssim_unet = 0.0
     n_batches = 0
 
     with torch.no_grad():
         for x_batch, y_delta_batch, target_batch in test_loader:
-            x_batch = x_batch.to(device)
+            x_batch      = x_batch.to(device)
             y_delta_batch = y_delta_batch.to(device)
-            target_batch = target_batch.to(device)
+            target_batch  = target_batch.to(device)
 
             x_fbp = K.FBP(y_delta_batch)
             x_rec = model(x_fbp)
 
-            total_mse_fbp += torch.mean((x_fbp - target_batch) ** 2).item()
+            total_mse_fbp  += torch.mean((x_fbp - target_batch) ** 2).item()
             total_mse_unet += torch.mean((x_rec - target_batch) ** 2).item()
-            total_ssim_fbp += structural_similarity_index_measure(
+            total_ssim_fbp  += structural_similarity_index_measure(
                 x_fbp, target_batch, data_range=1.0
             ).item()
             total_ssim_unet += structural_similarity_index_measure(
@@ -127,22 +177,10 @@ for n_angles in ANGLE_CONFIGS:
             n_batches += 1
 
     n = max(n_batches, 1)
-    print(f'  FBP  -> MSE: {total_mse_fbp / n:.5f} | SSIM: {total_ssim_fbp / n:.4f}')
+    print(f'  FBP  -> MSE: {total_mse_fbp  / n:.5f} | SSIM: {total_ssim_fbp  / n:.4f}')
     print(f'  UNet -> MSE: {total_mse_unet / n:.5f} | SSIM: {total_ssim_unet / n:.4f}')
 
-    # Visualizza primo esempio del test set
-    x_true, y_delta, target = test_dataset[0]
-    x_true = x_true.unsqueeze(0).to(device)
-    y_delta = y_delta.unsqueeze(0).to(device)
-    target = target.unsqueeze(0).to(device)
-
-    with torch.no_grad():
-        x_fbp = K.FBP(y_delta)
-        x_rec = model(x_fbp)
-
-    mse_fbp = torch.mean((x_fbp - target) ** 2).item()
-    mse_unet = torch.mean((x_rec - target) ** 2).item()
-    ssim_fbp = structural_similarity_index_measure(x_fbp, target, data_range=1.0).item()
-    ssim_unet = structural_similarity_index_measure(x_rec, target, data_range=1.0).item()
-
-    plot_results(x_true, target, x_fbp, x_rec, mse_fbp, mse_unet, ssim_fbp, ssim_unet)
+    visualize_sample(
+        model, test_dataset, K, device, n_angles,
+        title=f'Inference finale | {n_angles} angoli | loss={LOSS_NAME}',
+    )

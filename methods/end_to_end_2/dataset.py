@@ -7,32 +7,25 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
 VALID_ANGLES = [45, 60, 90, 180]
-VALIDATION_PATIENT = 'C030'   # paziente di train usato come validation
+VALIDATION_PATIENT = 'C030'
 
 
 class MayoRecoCorruptedDataset(Dataset):
     """
-    Carica triple (raw_image, sinogram_corrotto, reco) per un dato split e n_angles.
-
     Struttura attesa:
         data/
         ├── raw/
         │   ├── train/C001/0.png ...   (C030 qui → diventa validation)
         │   └── test/C002/0.png  ...
-        │
         ├── reco/
         │   └── angles_<N>/
         │       ├── train/      train_C001_0.npy ...
         │       ├── test/       test_C002_0.npy  ...
-        │       └── validation/ validation_C030_0.npy ...
-        │
+        │       └── validation/ train_C030_0.npy ...
         └── sinogram_corrupted/
-            ├── train/
-            │   └── angles_<N>/  train_C001_0.npy ...
-            ├── test/
-            │   └── angles_<N>/  test_C002_0.npy  ...
-            └── validation/
-                └── angles_<N>/  train_C030_0.npy ...   ← prefisso 'train_', non 'validation_'
+            ├── train/angles_<N>/       train_C001_0.npy ...
+            ├── test/angles_<N>/        test_C002_0.npy  ...
+            └── validation/angles_<N>/  train_C030_0.npy ...
     """
 
     def __init__(self, data_root, split, n_angles, data_shape=256,
@@ -50,18 +43,19 @@ class MayoRecoCorruptedDataset(Dataset):
         self.data_shape = data_shape
         self.split = split
 
-        # Le raw di validation stanno fisicamente in raw/train/C030
         if split == 'validation':
+            # Le raw di validation stanno fisicamente in raw/train/C030
             raw_root = data_root / 'raw' / 'train' / validation_patient
             self.input_files = sorted(raw_root.glob('*.png'))
         else:
             raw_root = data_root / 'raw' / split
-            self.input_files = sorted(raw_root.glob('*/*.png'))
+            all_files = sorted(raw_root.glob('*/*.png'))
+            # Escludi il paziente di validation dal train
+            self.input_files = [
+                f for f in all_files if f.parent.name != validation_patient
+            ]
 
-        # Entrambi reco e sinogram_corrupted usano prefisso 'train_' per i file di validation
-
-
-
+        # reco e sinogram_corrupted usano prefisso 'train_' per i file di validation
         file_prefix = 'train' if split == 'validation' else split
 
         self.pairs = []
@@ -75,13 +69,16 @@ class MayoRecoCorruptedDataset(Dataset):
             if corr.exists() and tgt.exists():
                 self.pairs.append((inp, corr, tgt))
             elif verbose:
-                print(f'Missing corr: {corr.name}' if not corr.exists() else f'Missing reco: {tgt.name}')
+                if not corr.exists():
+                    print(f'Missing corr: {corr.name}')
+                else:
+                    print(f'Missing reco: {tgt.name}')
 
         if len(self.pairs) == 0:
             raise RuntimeError(
                 f'Nessuna coppia trovata per split={split}, angles={n_angles}.\n'
-                f'  reco dir:  {self.reco_dir}\n'
-                f'  corr dir:  {self.corr_dir}'
+                f'  reco_dir: {self.reco_dir}\n'
+                f'  corr_dir: {self.corr_dir}'
             )
 
         print(f'{split} | angles={n_angles}: {len(self.pairs)} triple trovate')
@@ -92,18 +89,15 @@ class MayoRecoCorruptedDataset(Dataset):
     def __getitem__(self, idx):
         input_path, corr_path, target_path = self.pairs[idx]
 
-        # Ground truth raw
         x = Image.open(input_path).convert('L')
         x = transforms.ToTensor()(x)
         x = transforms.Resize((self.data_shape, self.data_shape))(x)
 
-        # Sinogramma corrotto
         y_delta = np.load(corr_path).astype(np.float32)
         y_delta = torch.from_numpy(y_delta)
         if y_delta.ndim == 2:
             y_delta = y_delta.unsqueeze(0)
 
-        # Reco target
         target = np.load(target_path).astype(np.float32)
         target = torch.from_numpy(target)
         if target.ndim == 2:
