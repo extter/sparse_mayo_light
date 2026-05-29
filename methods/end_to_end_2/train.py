@@ -1,5 +1,8 @@
 import torch
-from torchmetrics.functional.image import structural_similarity_index_measure
+from torchmetrics.functional.image import (
+    structural_similarity_index_measure,
+    peak_signal_noise_ratio,
+)
 from tqdm.auto import tqdm
 
 from .losses import get_loss
@@ -38,6 +41,7 @@ def validate(model, val_loader, loss_fn, K, device, epoch, num_epochs):
     model.eval()
     val_loss = 0.0
     val_ssim = 0.0
+    val_psnr = 0.0
     n_batches = 0
 
     with torch.no_grad():
@@ -50,16 +54,19 @@ def validate(model, val_loader, loss_fn, K, device, epoch, num_epochs):
 
             x_fbp = K.FBP(y_delta_batch)
             x_pred = model(x_fbp)
+            x_pred_clamped = torch.clamp(x_pred, 0.0, 1.0)
 
             val_loss += loss_fn(x_pred, target_batch).item()
             val_ssim += structural_similarity_index_measure(
                 x_pred, target_batch, data_range=1.0
             ).item()
+            val_psnr += peak_signal_noise_ratio(
+                x_pred, target_batch, data_range=1.0
+            ).item()
             n_batches += 1
 
-    val_loss /= max(n_batches, 1)
-    val_ssim /= max(n_batches, 1)
-    return val_loss, val_ssim
+    n = max(n_batches, 1)
+    return val_loss / n, val_ssim / n, val_psnr / n
 
 
 def train(
@@ -71,7 +78,7 @@ def train(
     weights_path,
     num_epochs=10,
     lr=1e-3,
-    loss_name='mixed',   # 'mse' | 'ssim' | 'ssim_custom' | 'mixed'
+    loss_name='mixed',
 ):
     loss_fn = get_loss(loss_name).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -79,6 +86,7 @@ def train(
     train_loss_history = []
     val_loss_history = []
     val_ssim_history = []
+    val_psnr_history = []
     best_ssim = -1.0
 
     print(f'Loss function: {loss_name}')
@@ -87,19 +95,21 @@ def train(
         train_loss = train_one_epoch(
             model, train_loader, optimizer, loss_fn, K, device, epoch, num_epochs
         )
-        val_loss, val_ssim = validate(
+        val_loss, val_ssim, val_psnr = validate(
             model, val_loader, loss_fn, K, device, epoch, num_epochs
         )
 
         train_loss_history.append(train_loss)
         val_loss_history.append(val_loss)
         val_ssim_history.append(val_ssim)
+        val_psnr_history.append(val_psnr)
 
         print(
             f'Epoch {epoch + 1}/{num_epochs} | '
             f'Train loss: {train_loss:.6f} | '
             f'Val loss: {val_loss:.6f} | '
-            f'Val SSIM: {val_ssim:.4f}'
+            f'Val SSIM: {val_ssim:.4f} | '
+            f'Val PSNR: {val_psnr:.2f} dB'
         )
 
         if val_ssim > best_ssim:
@@ -107,4 +117,4 @@ def train(
             torch.save(model.state_dict(), weights_path)
 
     print(f'Saved best model weights to: {weights_path}')
-    return train_loss_history, val_loss_history, val_ssim_history
+    return train_loss_history, val_loss_history, val_ssim_history, val_psnr_history

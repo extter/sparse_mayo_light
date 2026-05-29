@@ -75,24 +75,31 @@ def plot_results(x_true, target, x_fbp, x_rec, mse_fbp, mse_unet, ssim_fbp, ssim
     plt.show()
 
 
-def plot_loss_curves(train_loss_history, val_loss_history, val_ssim_history):
-    plt.figure(figsize=(10, 4))
-    plt.plot(train_loss_history, label='Train loss')
-    plt.plot(val_loss_history, label='Val loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('MSE')
-    plt.title('Loss per epoch')
-    plt.grid(alpha=0.3)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+def plot_loss_curves(train_loss_history, val_loss_history, val_ssim_history, val_psnr_history=None):
+    fig, axes = plt.subplots(1, 3 if val_psnr_history else 2, figsize=(15 if val_psnr_history else 10, 4))
 
-    plt.figure(figsize=(10, 4))
-    plt.plot(val_ssim_history, label='Val SSIM', color='green')
-    plt.xlabel('Epoch')
-    plt.ylabel('SSIM')
-    plt.title('SSIM per epoch')
-    plt.grid(alpha=0.3)
-    plt.legend()
+    axes[0].plot(train_loss_history, label='Train loss')
+    axes[0].plot(val_loss_history, label='Val loss')
+    axes[0].set_xlabel('Epoch')
+    axes[0].set_ylabel('Loss')
+    axes[0].set_title('Loss per epoch')
+    axes[0].grid(alpha=0.3)
+    axes[0].legend()
+
+    axes[1].plot(val_ssim_history, label='Val SSIM', color='green')
+    axes[1].set_xlabel('Epoch')
+    axes[1].set_ylabel('SSIM')
+    axes[1].set_title('SSIM per epoch')
+    axes[1].grid(alpha=0.3)
+    axes[1].legend()
+
+    if val_psnr_history:
+        axes[2].plot(val_psnr_history, label='Val PSNR', color='orange')
+        axes[2].set_xlabel('Epoch')
+        axes[2].set_ylabel('PSNR (dB)')
+        axes[2].set_title('PSNR per epoch')
+        axes[2].grid(alpha=0.3)
+        axes[2].legend()
+
     plt.tight_layout()
     plt.show()

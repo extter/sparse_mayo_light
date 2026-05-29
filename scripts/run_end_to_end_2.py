@@ -105,7 +105,7 @@ for n_angles in ANGLE_CONFIGS:
 
     weights_path = weights_dir / f'CTUNet_{n_angles}angles_{LOSS_NAME}.pth'
 
-    train_loss_history, val_loss_history, val_ssim_history = train(
+    train_loss_history, val_loss_history, val_ssim_history, val_psnr_history = train(
         model=model,
         train_loader=train_loader,
         val_loader=val_loader,
@@ -117,7 +117,7 @@ for n_angles in ANGLE_CONFIGS:
         loss_name=LOSS_NAME,
     )
 
-    plot_loss_curves(train_loss_history, val_loss_history, val_ssim_history)
+    plot_loss_curves(train_loss_history, val_loss_history, val_ssim_history, val_psnr_history)
 
     # Carica i pesi migliori e visualizza un sample del test set
     best_model = SimpleUNet(in_ch=1, out_ch=1, base_ch=32)

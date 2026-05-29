@@ -8,3 +8,4 @@ pyyaml
 tqdm
 astra-toolbox
 cupy-cuda12x
+torchmetrics
