@@ -25,20 +25,13 @@ def train_one_epoch(model, train_loader, optimizer, loss_fn, K, device, epoch, n
 
         with torch.no_grad():
             x_fbp = K.FBP(y_delta_batch)
-        '''        # --- diagnostica solo al primo step del primo epoch ---
-        if epoch == 0 and step == 1:
-            print('\n[DEBUG] Statistiche tensori (primo batch):')
-            _print_tensor_stats('raw PNG (x)',       x_batch)
-            _print_tensor_stats('sinogram corrotto', y_delta_batch)
-            _print_tensor_stats('reco target',       target_batch)
-            _print_tensor_stats('FBP output',        x_fbp)
-            print()'''
 
+        # PRIMA: x_pred = model(x_fbp)
+        # ORA: predici gli artefatti e sottrai
+        x_art = model(x_fbp)          # artefatti predetti
+        x_rec = x_fbp - x_art         # immagine corretta
 
-        x_pred = model(x_fbp)
-        _print_tensor_stats('UNet output',       x_pred)
-
-        loss = loss_fn(x_pred, target_batch)
+        loss = loss_fn(x_rec, target_batch)
 
         optimizer.zero_grad()
         loss.backward()
@@ -64,25 +57,30 @@ def validate(model, val_loader, loss_fn, K, device, epoch, num_epochs):
         for x_batch, y_delta_batch, target_batch in tqdm(
             val_loader, desc=f'Epoch {epoch + 1}/{num_epochs} [val]', leave=False
         ):
-            x_batch = x_batch.to(device)
+            x_batch       = x_batch.to(device)
             y_delta_batch = y_delta_batch.to(device)
-            target_batch = target_batch.to(device)
+            target_batch  = target_batch.to(device)
 
             x_fbp = K.FBP(y_delta_batch)
-            x_pred = model(x_fbp)
 
-            val_loss += loss_fn(x_pred, target_batch).item()
+            # artefatti + ricostruzione
+            x_art = model(x_fbp)
+            x_rec = x_fbp - x_art
+
+            # loss sempre sull'immagine finale
+            val_loss += loss_fn(x_rec, target_batch).item()
+
+            # metriche sulla ricostruzione finale
             val_ssim += structural_similarity_index_measure(
-                x_pred, target_batch, data_range=1.0
+                x_rec, target_batch, data_range=1.0
             ).item()
             val_psnr += peak_signal_noise_ratio(
-                x_pred, target_batch, data_range=1.0
+                x_rec, target_batch, data_range=1.0
             ).item()
             n_batches += 1
 
     n = max(n_batches, 1)
     return val_loss / n, val_ssim / n, val_psnr / n
-
 
 def train(
     model,

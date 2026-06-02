@@ -57,7 +57,10 @@ def visualize_sample(model, dataset, K, device, n_angles, title=''):
 
     with torch.no_grad():
         x_fbp = K.FBP(y_delta)
-        x_rec = model(x_fbp)
+        # PRIMA: x_rec = model(x_fbp)
+        x_art = model(x_fbp)
+        x_rec = x_fbp - x_art
+        x_rec = torch.clamp(x_rec, 0.0, 1.0)
 
     mse_fbp  = torch.mean((x_fbp - target) ** 2).item()
     mse_unet = torch.mean((x_rec - target) ** 2).item()
@@ -162,15 +165,18 @@ for n_angles in ANGLE_CONFIGS:
 
     with torch.no_grad():
         for x_batch, y_delta_batch, target_batch in test_loader:
-            x_batch      = x_batch.to(device)
+            x_batch       = x_batch.to(device)
             y_delta_batch = y_delta_batch.to(device)
             target_batch  = target_batch.to(device)
 
             x_fbp = K.FBP(y_delta_batch)
-            x_rec = model(x_fbp)
+
+            # PRIMA: x_rec = model(x_fbp)
+            x_art = model(x_fbp)
+            x_rec = x_fbp - x_art
 
             total_mse_fbp  += torch.mean((x_fbp - target_batch) ** 2).item()
-            total_mse_unet += torch.mean((x_rec - target_batch) ** 2).item()
+            total_mse_unet += torch.mean((x_rec  - target_batch) ** 2).item()
             total_ssim_fbp  += structural_similarity_index_measure(
                 x_fbp, target_batch, data_range=1.0
             ).item()
