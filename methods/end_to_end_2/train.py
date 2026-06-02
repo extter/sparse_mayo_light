@@ -24,7 +24,7 @@ def train_one_epoch(model, train_loader, optimizer, loss_fn, K, device, epoch, n
         target_batch  = target_batch.to(device)
 
         with torch.no_grad():
-            x_fbp = torch.clamp(K.FBP(y_delta_batch), min=0.0, max=1.0)
+            x_fbp = K.FBP(y_delta_batch)
         '''        # --- diagnostica solo al primo step del primo epoch ---
         if epoch == 0 and step == 1:
             print('\n[DEBUG] Statistiche tensori (primo batch):')
@@ -68,9 +68,8 @@ def validate(model, val_loader, loss_fn, K, device, epoch, num_epochs):
             y_delta_batch = y_delta_batch.to(device)
             target_batch = target_batch.to(device)
 
-            x_fbp = torch.clamp(K.FBP(y_delta_batch), min=0.0, max=1.0)
+            x_fbp = K.FBP(y_delta_batch)
             x_pred = model(x_fbp)
-            x_pred_clamped = torch.clamp(x_pred, 0.0, 1.0)
 
             val_loss += loss_fn(x_pred, target_batch).item()
             val_ssim += structural_similarity_index_measure(

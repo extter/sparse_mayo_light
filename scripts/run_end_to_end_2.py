@@ -12,6 +12,7 @@ from torchmetrics.functional.image import structural_similarity_index_measure
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 from methods.end_to_end_2 import (
+    ResidualUNet,
     SimpleUNet,
     get_dataloaders,
     get_ct_operator,
@@ -55,7 +56,7 @@ def visualize_sample(model, dataset, K, device, n_angles, title=''):
     target  = target.unsqueeze(0).to(device)
 
     with torch.no_grad():
-        x_fbp = torch.clamp(K.FBP(y_delta), min=0.0, max=1.0)
+        x_fbp = K.FBP(y_delta)
         x_rec = model(x_fbp)
 
     mse_fbp  = torch.mean((x_fbp - target) ** 2).item()
@@ -165,7 +166,7 @@ for n_angles in ANGLE_CONFIGS:
             y_delta_batch = y_delta_batch.to(device)
             target_batch  = target_batch.to(device)
 
-            x_fbp = torch.clamp(K.FBP(y_delta_batch), min=0.0, max=1.0)
+            x_fbp = K.FBP(y_delta_batch)
             x_rec = model(x_fbp)
 
             total_mse_fbp  += torch.mean((x_fbp - target_batch) ** 2).item()
