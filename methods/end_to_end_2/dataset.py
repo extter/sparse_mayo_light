@@ -104,8 +104,7 @@ class MayoRecoCorruptedDataset(Dataset):
             target = target.unsqueeze(0)
         target = transforms.Resize((self.data_shape, self.data_shape))(target)
 
-        return x, y_delta, target
-
+        return x, y_delta, target, target_path.name
 
 def get_dataloaders(data_root, n_angles, data_shape=256, batch_size=16,
                     validation_patient=VALIDATION_PATIENT, verbose=True):
