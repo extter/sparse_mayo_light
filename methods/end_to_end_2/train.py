@@ -26,8 +26,7 @@ def train_one_epoch(model, train_loader, optimizer, loss_fn, K, device, epoch, n
         with torch.no_grad():
             x_fbp = K.FBP(y_delta_batch)
 
-        # PRIMA: x_pred = model(x_fbp)
-        # ORA: predici gli artefatti e sottrai
+        # Predici gli artefatti e sottrai
         x_art = model(x_fbp)          # artefatti predetti
         x_rec = x_fbp - x_art         # immagine corretta
 
