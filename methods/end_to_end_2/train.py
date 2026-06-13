@@ -18,7 +18,7 @@ def train_one_epoch(model, train_loader, optimizer, loss_fn, K, device, epoch, n
     epoch_loss = 0.0
     progress_bar = tqdm(train_loader, desc=f'Epoch {epoch + 1}/{num_epochs} [train]', leave=True)
 
-    for step, (x_batch, y_delta_batch, target_batch) in enumerate(progress_bar, start=1):
+    for step, (x_batch, y_delta_batch, target_batch, _) in enumerate(progress_bar, start=1):
         x_batch       = x_batch.to(device)
         y_delta_batch = y_delta_batch.to(device)
         target_batch  = target_batch.to(device)
@@ -26,8 +26,7 @@ def train_one_epoch(model, train_loader, optimizer, loss_fn, K, device, epoch, n
         with torch.no_grad():
             x_fbp = K.FBP(y_delta_batch)
 
-        # PRIMA: x_pred = model(x_fbp)
-        # ORA: predici gli artefatti e sottrai
+        # Predici gli artefatti e sottrai
         x_art = model(x_fbp)          # artefatti predetti
         x_rec = x_fbp - x_art         # immagine corretta
 
@@ -54,7 +53,7 @@ def validate(model, val_loader, loss_fn, K, device, epoch, num_epochs):
     n_batches = 0
 
     with torch.no_grad():
-        for x_batch, y_delta_batch, target_batch in tqdm(
+        for x_batch, y_delta_batch, target_batch, _ in tqdm(
             val_loader, desc=f'Epoch {epoch + 1}/{num_epochs} [val]', leave=False
         ):
             x_batch       = x_batch.to(device)

@@ -17,17 +17,15 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Dataset
-data/raw/
-data/dataset/
-data/preprocessed/
-data/sinogram_clean/
-data/sinogram_corrupted/
-data/reco/
-data/lamda_choice/
 
 #tutte le immagini in data
-data/**/*.png
 data/**/*.npy
+data/raw/**/*.png
+data/preprocessed/**/*.npy
+data/sinogram_clean/**/*.npy
+data/sinogram_corrupted/**/*.npy
+data/reco/**/*.npy
+data/lambda_choice/angles*/**/*.png
 
 #tutti i weights
 *.pth
