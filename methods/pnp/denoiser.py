@@ -10,7 +10,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 from methods.pnp.dataset import GaussianNoiseDataset
-from methods.end_to_end.unet import UNet
+from methods.end_to_end_2.unet import SimpleUNet
 
 # PATH CONFIGURATION 
 gt_train = "../../data/mayo/train" #DA CAMBIARE 
@@ -31,7 +31,7 @@ train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True
 val_dataset = GaussianNoiseDataset(gt_val, split="val")
 val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-model = UNet(ch_in=1, ch_out=1, middle_ch=(16, 32, 64, 128)).to(DEVICE)
+model = SimpleUNet(ch_in=1, ch_out=1, base_ch=16).to(DEVICE)
 optimizer = Adam(model.parameters(), lr=LR)
 
 scheduler = ReduceLROnPlateau(optimizer, mode='min', factor = 0.5, patience=2)
