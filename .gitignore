@@ -16,8 +16,6 @@ __pycache__/
 # Jupyter checkpoints
 .ipynb_checkpoints/
 
-# Dataset
-
 #tutte le immagini in data
 data/**/*.npy
 data/raw/**/*.png
