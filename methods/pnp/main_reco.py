@@ -53,9 +53,9 @@ def process_patient(sinogram, angles, solver, num_iter=100, mu=0.5, step=1):
 if __name__ == "__main__":
     
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    PATH_PESI = "/kaggle/input/datasets/federicopaletta/checkpoints/pnp_denoiser_best.pth" # DA CAMBIARE 
-    CARTELLA_SINOGRAMMI = "/kaggle/input/datasets/catalinsajin/new-raw-data/sinogram_corrupted/test/angles_180" # DA CAMBIARE ANCHE A SECONDA ANGOLO
-    CARTELLA_GROUND_TRUTH = "/kaggle/input/datasets/catalinsajin/new-raw-data/preprocessed/test" # DA CAMBIARE
+    PATH_PESI = "./checkpoints/pnp_denoiser_best.pth" # DA CAMBIARE 
+    CARTELLA_SINOGRAMMI = "../../data/sinogram_corrupted/test/angles_180" # DA CAMBIARE ANCHE A SECONDA ANGOLO
+    CARTELLA_GROUND_TRUTH = "../../data/preprocessed/test" # DA CAMBIARE
 
     print("--- INIZIALIZZAZIONE PIPELINE BASE ---")
     
