@@ -27,5 +27,10 @@ data/sinogram_corrupted/**/*.npy
 data/reco/**/*.npy
 data/lambda_choice/angles*/**/*.png
 
+data/mayo/**/*.png
+
+
 #tutti i weights
 *.pth
+
+
