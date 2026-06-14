@@ -47,7 +47,7 @@ class TCDataset(Dataset):
         
         # Controllo di sicurezza per evitare disallineamenti tra input e target
         if len(self.sino_files) != len(self.gt_files):
-            print(f"⚠️ Attenzione: Trovati {len(self.sino_files)} sinogrammi e {len(self.gt_files)} immagini GT!")
+            print(f" Attenzione: Trovati {len(self.sino_files)} sinogrammi e {len(self.gt_files)} immagini GT!")
 
     def __len__(self):
         # Dice a PyTorch quante slice ci sono in totale nel dataset
