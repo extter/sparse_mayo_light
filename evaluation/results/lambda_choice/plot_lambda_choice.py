@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 """
 plot_lambda_choice_boxplots.py
-
-Legge i risultati salvati da lambda_choice.py e genera
-un boxplot separato per ogni metrica (RE, PSNR, SSIM).
-
-Output:
-evaluation/results/lambda_choice/boxplots/
 """
 
 import os
@@ -18,6 +12,15 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+matplotlib.rcParams.update({
+    "font.size": 16,
+    "axes.titlesize": 20,
+    "axes.labelsize": 18,
+    "xtick.labelsize": 14,
+    "ytick.labelsize": 15,
+    "legend.fontsize": 14,
+    "legend.title_fontsize": 15,
+})
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 if PROJECT_ROOT not in sys.path:
@@ -25,20 +28,24 @@ if PROJECT_ROOT not in sys.path:
 print(f"Project root: {PROJECT_ROOT}")
 
 EVAL_DIR = os.path.join(PROJECT_ROOT, "evaluation", "results", "lambda_choice")
-RESULTS_FILE = os.path.join(EVAL_DIR, "results.json")  # cambia se necessario
+RESULTS_FILE = os.path.join(EVAL_DIR, "results.json")
 SAVE_DIR = os.path.join(EVAL_DIR, "boxplots")
 
-
 METRICS = ["RE", "PSNR", "SSIM"]
+
+CHOSEN_LAMBDA = {
+    "45":  0.05,
+    "60":  0.05,
+    "90":  0.07,
+    "180": 0.5,
+}
 
 
 def load_results():
     if not os.path.exists(RESULTS_FILE):
         raise FileNotFoundError(f"Results file not found: {RESULTS_FILE}")
-
     with open(RESULTS_FILE, "r") as f:
         results = json.load(f)
-
     return results
 
 
@@ -47,7 +54,7 @@ def sort_lambda_keys(lambda_keys):
 
 
 def plot_metric_boxplot(results, metric_name, save_path):
-    fig, ax = plt.subplots(figsize=(14, 6))
+    fig, ax = plt.subplots(figsize=(16, 7))
 
     data = []
     labels = []
@@ -66,8 +73,12 @@ def plot_metric_boxplot(results, metric_name, save_path):
     pos = 1
     gap_between_angles = 1.5
 
+    # Tieni traccia della posizione centrale di ogni gruppo
+    group_centers = {}
+
     for angle_key in angle_keys:
         lambda_keys = sort_lambda_keys(results[angle_key].keys())
+        group_start = pos
 
         for lambda_key in lambda_keys:
             metric_values = results[angle_key][lambda_key][metric_name]
@@ -77,6 +88,8 @@ def plot_metric_boxplot(results, metric_name, save_path):
             box_colors.append(angle_color_map.get(angle_key, "#999999"))
             pos += 1
 
+        group_end = pos - 1
+        group_centers[angle_key] = (group_start + group_end) / 2
         pos += gap_between_angles
 
     bp = ax.boxplot(
@@ -91,31 +104,55 @@ def plot_metric_boxplot(results, metric_name, save_path):
         patch.set_facecolor(color)
         patch.set_alpha(0.75)
         patch.set_edgecolor("black")
-        patch.set_linewidth(1.0)
+        patch.set_linewidth(1.2)
 
     for whisker in bp["whiskers"]:
         whisker.set_color("black")
-        whisker.set_linewidth(1.0)
+        whisker.set_linewidth(1.2)
 
     for cap in bp["caps"]:
         cap.set_color("black")
-        cap.set_linewidth(1.0)
+        cap.set_linewidth(1.2)
 
     for median in bp["medians"]:
         median.set_color("black")
-        median.set_linewidth(1.5)
+        median.set_linewidth(2.0)
 
     ax.set_xticks(positions)
     ax.set_xticklabels(labels, rotation=45, ha="right")
-    ax.set_ylabel(metric_name, fontsize=12)
-    ax.set_title(
-        f"{metric_name} distribution across lambda values",
-        fontsize=14,
-        fontweight="bold"
-    )
+    ax.set_ylabel(metric_name)
+    ax.set_title(f"{metric_name} distribution across lambda values", fontsize=20, pad=60)
     ax.grid(axis="y", linestyle="--", alpha=0.5)
 
-    # linee verticali per separare i gruppi di angoli
+    # Annotazioni sovrapposte al grafico, subito sotto il titolo
+    # y in transAxes: 1.0 = top del plot area, valori >1 escono sopra
+    x_max = positions[-1] + gap_between_angles
+    x_min = positions[0] - gap_between_angles
+
+    for angle_key, cx in group_centers.items():
+        chosen = CHOSEN_LAMBDA.get(angle_key)
+        # Normalizza cx in coordinate axes [0,1]
+        cx_norm = (cx - x_min) / (x_max - x_min)
+        ax.text(
+            cx_norm, 1.12,
+            f"{angle_key} angles",
+            transform=ax.transAxes,
+            ha="center", va="center",
+            fontsize=13, fontweight="bold",
+            color=angle_color_map.get(angle_key, "#333333"),
+            clip_on=False,
+        )
+        ax.text(
+            cx_norm, 1.04,
+            f"λ = {chosen:.0e}",
+            transform=ax.transAxes,
+            ha="center", va="center",
+            fontsize=13, fontweight="bold",
+            color=angle_color_map.get(angle_key, "#333333"),
+            clip_on=False,
+        )
+
+    # Linee verticali per separare i gruppi di angoli
     current_pos = 1
     for angle_key in angle_keys[:-1]:
         n_lambdas = len(results[angle_key].keys())
@@ -124,29 +161,15 @@ def plot_metric_boxplot(results, metric_name, save_path):
                    color="gray", linestyle="--", alpha=0.35)
         current_pos += gap_between_angles
 
-    # legenda colori
-    legend_handles = [
-        Patch(facecolor=angle_color_map[k], edgecolor="black", label=f"{k} angles")
-        for k in angle_keys
-    ]
-    legend_loc = "upper right" if metric_name == "RE" else "upper left"
-
-    ax.legend(
-        handles=legend_handles,
-        title="Projection angles",
-        loc=legend_loc
-    )
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-
     print(f"Saved: {save_path}")
 
-    
+
 def main():
     print("Loading lambda choice results...")
     results = load_results()
-
     os.makedirs(SAVE_DIR, exist_ok=True)
 
     for metric_name in METRICS:
