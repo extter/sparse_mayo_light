@@ -4,9 +4,8 @@ lambda_choice.py
 
 Esegue il tuning euristico di lambda per la ricostruzione TV
 su un sottoinsieme del training set, salvando:
-- immagini qualitative per ogni lambda
-- metriche quantitative in results.json
-- boxplot finale per RE, PSNR e SSIM
+- immagini qualitative per ogni lambda in save_dir (da config)
+- metriche quantitative in evaluation/results/lambda_choice/
 """
 
 import os
@@ -14,6 +13,8 @@ import sys
 import json
 import yaml
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -31,6 +32,7 @@ from third_party.ippy import metrics
 
 BASE_DATA_PATH = os.path.join(PROJECT_ROOT, "data")
 TV_CONFIG_PATH = os.path.join(PROJECT_ROOT, "configs", "tv_config.yaml")
+EVAL_DIR = os.path.join(PROJECT_ROOT, "evaluation", "results", "lambda_choice")
 
 
 def load_config():
@@ -70,68 +72,22 @@ def format_lambda_label(lmbda):
     return f"{lmbda:.0e}".replace("e-0", "e-").replace("e+0", "e+")
 
 
-def save_boxplot_results(results, angle_configs, lambda_values, output_path):
-    metrics_names = ["RE", "PSNR", "SSIM"]
-    lambda_labels = [format_lambda_label(lmbda) for lmbda in lambda_values]
-    colors = ["#4C72B0", "#DD8452", "#55A868", "#C44E52"]
+def save_image(x_true, x_sol, lmbda_str, n_angles, re, psnr, ssim, save_path):
+    fig, axes = plt.subplots(1, 2, figsize=(8, 4))
 
-    n_lambdas = len(lambda_values)
-    n_angles = len(angle_configs)
-    width = 0.15
-    spacing = 0.05
+    axes[0].imshow(x_true.cpu().squeeze(), cmap="gray")
+    axes[0].set_title("Ground Truth")
+    axes[0].axis("off")
 
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-
-    for ax, metric_name in zip(axes, metrics_names):
-        for j, (n_ang, color) in enumerate(zip(angle_configs, colors)):
-            positions = []
-            data = []
-
-            for i, lmbda in enumerate(lambda_values):
-                pos = i * (n_angles * width + spacing) + j * width
-                positions.append(pos)
-                data.append(results[n_ang][lmbda][metric_name])
-
-            ax.boxplot(
-                data,
-                positions=positions,
-                widths=width * 0.85,
-                patch_artist=True,
-                boxprops=dict(facecolor=color, alpha=0.7),
-                medianprops=dict(color="black", linewidth=1.5),
-                whiskerprops=dict(color=color),
-                capprops=dict(color=color),
-                flierprops=dict(marker="o", color=color, markersize=3),
-            )
-
-        group_width = n_angles * width + spacing
-        tick_positions = [
-            i * group_width + (n_angles - 1) * width / 2
-            for i in range(n_lambdas)
-        ]
-
-        ax.set_xticks(tick_positions)
-        ax.set_xticklabels(lambda_labels, fontsize=10)
-        ax.set_xlabel("λ", fontsize=12)
-        ax.set_title(metric_name, fontsize=13, fontweight="bold")
-        ax.grid(axis="y", linestyle="--", alpha=0.5)
-
-    handles = [
-        plt.Rectangle((0, 0), 1, 1, facecolor=color, alpha=0.7)
-        for color in colors[:len(angle_configs)]
-    ]
-    fig.legend(
-        handles,
-        [f"{a} angles" for a in angle_configs],
-        loc="lower center",
-        ncol=len(angle_configs),
-        fontsize=11,
-        bbox_to_anchor=(0.5, -0.08),
+    axes[1].imshow(x_sol.detach().cpu().squeeze(), cmap="gray")
+    axes[1].set_title(
+        f"λ={lmbda_str} | {n_angles} angles\n"
+        f"RE={re:.4f} | PSNR={psnr:.2f} | SSIM={ssim:.4f}"
     )
+    axes[1].axis("off")
 
-    plt.suptitle("Reconstruction metrics — Chambolle-Pock TpV", fontsize=14, fontweight="bold")
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.savefig(save_path, dpi=100, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -149,9 +105,11 @@ def main():
 
     lambda_values = config["lambda_sweep"]["values"]
     subset_size = config["lambda_sweep"]["subset_size"]
-    save_base_dir = os.path.join(PROJECT_ROOT, config["lambda_sweep"]["save_dir"])
+    images_base_dir = os.path.join(PROJECT_ROOT, config["lambda_sweep"]["save_dir"])
     results_filename = config["lambda_sweep"]["results_filename"]
-    boxplot_filename = config["lambda_sweep"]["boxplot_filename"]
+
+    os.makedirs(images_base_dir, exist_ok=True)
+    os.makedirs(EVAL_DIR, exist_ok=True)
 
     device = get_device()
 
@@ -161,6 +119,8 @@ def main():
         f"maxiter={maxiter}, p={p}, batch_size={batch_size}, "
         f"subset_size={subset_size}"
     )
+    print(f"Images  -> {images_base_dir}")
+    print(f"Metrics -> {EVAL_DIR}")
 
     _, dataloaders = create_sinogram_dataloaders(
         base_data_path=BASE_DATA_PATH,
@@ -195,12 +155,13 @@ def main():
             print(f"\n--- lambda = {lmbda} ---")
 
             lmbda_str = format_lambda_label(lmbda)
-            save_dir = os.path.join(
-                save_base_dir,
+
+            img_save_dir = os.path.join(
+                images_base_dir,
                 f"angles_{n_angles}",
                 f"lambda_{lmbda_str}",
             )
-            os.makedirs(save_dir, exist_ok=True)
+            os.makedirs(img_save_dir, exist_ok=True)
 
             metrics_list = {"RE": [], "PSNR": [], "SSIM": []}
 
@@ -229,26 +190,16 @@ def main():
                 metrics_list["PSNR"].append(psnr)
                 metrics_list["SSIM"].append(ssim)
 
-                fig, axes = plt.subplots(1, 2, figsize=(8, 4))
-
-                axes[0].imshow(x_true.cpu().squeeze(), cmap="gray")
-                axes[0].set_title("Ground Truth")
-                axes[0].axis("off")
-
-                axes[1].imshow(x_sol.detach().cpu().squeeze(), cmap="gray")
-                axes[1].set_title(
-                    f"λ={lmbda_str} | {n_angles} angles\n"
-                    f"RE={re:.4f} | PSNR={psnr:.2f} | SSIM={ssim:.4f}"
+                save_image(
+                    x_true=x_true,
+                    x_sol=x_sol,
+                    lmbda_str=lmbda_str,
+                    n_angles=n_angles,
+                    re=re,
+                    psnr=psnr,
+                    ssim=ssim,
+                    save_path=os.path.join(img_save_dir, f"sample_{idx:03d}.png"),
                 )
-                axes[1].axis("off")
-
-                plt.tight_layout()
-                plt.savefig(
-                    os.path.join(save_dir, f"sample_{idx:03d}.png"),
-                    dpi=100,
-                    bbox_inches="tight",
-                )
-                plt.close(fig)
 
             results[n_angles][lmbda] = {
                 "RE": metrics_list["RE"],
@@ -272,22 +223,11 @@ def main():
                 f"{results[n_angles][lmbda]['SSIM_std']:.4f}"
             )
 
-    os.makedirs(save_base_dir, exist_ok=True)
-
-    results_path = os.path.join(save_base_dir, results_filename)
+    results_path = os.path.join(EVAL_DIR, results_filename)
     with open(results_path, "w") as f:
         json.dump(results, f, default=to_serializable, indent=2)
 
-    boxplot_path = os.path.join(save_base_dir, boxplot_filename)
-    save_boxplot_results(
-        results=results,
-        angle_configs=angle_configs,
-        lambda_values=lambda_values,
-        output_path=boxplot_path,
-    )
-
     print(f"\nResults saved to: {results_path}")
-    print(f"Boxplot saved to: {boxplot_path}")
     print("TV lambda choice completed!")
 
 
