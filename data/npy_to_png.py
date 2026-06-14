@@ -114,7 +114,7 @@ if __name__ == "__main__":
     # ================= DUE OPZIONI =================
     
     # OPZIONE 1: Converti un singolo file
-    npy_to_png("/home/catas/sparse_mayo_light/data/preprocessed/test/test_C081_0.npy")
+    npy_to_png("/home/catas/sparse_mayo_light/data/end_to_end2/180_angles/test_C081_0.npy")
     
     # OPZIONE 2: Converti tutta una folder
     #convert_folder("../data/preprocessed/train", "../data/preprocessed/train_png")
