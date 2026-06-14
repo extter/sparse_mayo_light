@@ -14,5 +14,7 @@
 `python3 scripts/preprocess.py`
 3. Generate sinograms: 
 `python3 scripts/generate_sinograms.py`
-3. Run a method: `python3 scripts/run_tv.py`
-4. Compare all results: `python3 scripts/compare_all.py`
+4. Run lambda choice and nr of epochs choice:
+`python3 scripts/lambda_choice.py`
+`python3 scripts/tv_loss_vs_epochs.py`
+5. Run a method: `python3 scripts/run_tv.py` , `python3 scripts/run_end_to_end_2.py` , `python3 scripts/run_pnp.py`
