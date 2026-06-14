@@ -1,6 +1,6 @@
 """
 Training end-to-end per tutti e 4 i numeri di angoli,
-inference sul test set con metriche per slice (SSIM, PSNR, MSE),
+inference sul test set con metriche per slice (SSIM, PSNR, MSE, RE),
 salvataggio CSV e boxplot comparativi.
 """
 
@@ -74,19 +74,20 @@ print(f"Training abilitato: {TRAIN_MODE}")
 def compute_metrics_per_slice(pred: torch.Tensor,
                                target: torch.Tensor) -> dict:
     """
-    Calcola SSIM, PSNR e MSE per ogni slice nel batch.
+    Calcola SSIM, PSNR, MSE e RE per ogni slice nel batch.
     pred/target: [B, 1, H, W] float, range [0, 1].
     Ritorna dict con liste di lunghezza B.
     """
     B = pred.shape[0]
-    ssims, psnrs, mses = [], [], []
+    ssims, psnrs, mses, res = [], [], [], []
     for i in range(B):
         p = pred[i].unsqueeze(0).clamp(0.0, 1.0)   # [1,1,H,W]
         t = target[i].unsqueeze(0)
         ssims.append(structural_similarity_index_measure(p, t, data_range=1.0).item())
         psnrs.append(peak_signal_noise_ratio(p, t, data_range=1.0).item())
         mses.append(torch.mean((p - t) ** 2).item())
-    return {'ssim': ssims, 'psnr': psnrs, 'mse': mses}
+        res.append((torch.norm(p - t) / torch.norm(t)).item())
+    return {'ssim': ssims, 'psnr': psnrs, 'mse': mses, 're': res}
 
 
 def visualize_sample(model, dataset, K, device, n_angles, title=''):
@@ -172,7 +173,7 @@ print(f'\n{"="*60}')
 print('Inference su tutto il test set — metriche per slice')
 print(f'{"="*60}')
 
-all_records = []   # ogni elemento → una riga del CSV
+all_records = []
 
 for n_angles in ANGLE_CONFIGS:
     print(f'\n--- {n_angles} angoli ---')
@@ -218,20 +219,24 @@ for n_angles in ANGLE_CONFIGS:
                     'fbp_ssim'  : fbp_m['ssim'][i],
                     'fbp_psnr'  : fbp_m['psnr'][i],
                     'fbp_mse'   : fbp_m['mse'][i],
+                    'fbp_re'    : fbp_m['re'][i],
                     # UNet
                     'unet_ssim' : unet_m['ssim'][i],
                     'unet_psnr' : unet_m['psnr'][i],
                     'unet_mse'  : unet_m['mse'][i],
+                    'unet_re'   : unet_m['re'][i],
                 })
 
     # Stampa medie
     df_tmp = pd.DataFrame([r for r in all_records if r['n_angles'] == n_angles])
     print(f"  FBP  -> SSIM: {df_tmp['fbp_ssim'].mean():.4f} | "
           f"PSNR: {df_tmp['fbp_psnr'].mean():.2f} dB | "
-          f"MSE: {df_tmp['fbp_mse'].mean():.5f}")
+          f"MSE: {df_tmp['fbp_mse'].mean():.5f} | "
+          f"RE: {df_tmp['fbp_re'].mean():.4f}")
     print(f"  UNet -> SSIM: {df_tmp['unet_ssim'].mean():.4f} | "
           f"PSNR: {df_tmp['unet_psnr'].mean():.2f} dB | "
-          f"MSE: {df_tmp['unet_mse'].mean():.5f}")
+          f"MSE: {df_tmp['unet_mse'].mean():.5f} | "
+          f"RE: {df_tmp['unet_re'].mean():.4f}")
 
     visualize_sample(model, test_ds, K, device, n_angles,
                      title=f'Inference finale | {n_angles} angoli | {LOSS_NAME}')
@@ -251,6 +256,7 @@ METRICS = [
     ('ssim', 'SSIM',      'higher is better'),
     ('psnr', 'PSNR (dB)', 'higher is better'),
     ('mse',  'MSE',       'lower is better'),
+    ('re',   'RE',        'lower is better'),
 ]
 
 COLORS = {
@@ -281,7 +287,6 @@ for metric_key, metric_label, direction in METRICS:
             patch.set_facecolor(COLORS[key])
             patch.set_alpha(0.75)
 
-        # Aggiungi valore mediano come testo
         for i, data in enumerate([data_fbp, data_unet], start=1):
             med = np.median(data)
             ax.text(i, med, f'{med:.3f}', ha='center', va='bottom',
@@ -313,7 +318,7 @@ for n_angles in ANGLE_CONFIGS:
     sub = df[df['n_angles'] == n_angles]
     for method, prefix in [('FBP', 'fbp'), ('UNet', 'unet')]:
         row = {'angles': n_angles, 'method': method}
-        for mk in ['ssim', 'psnr', 'mse']:
+        for mk in ['ssim', 'psnr', 'mse', 're']:
             vals = sub[f'{prefix}_{mk}']
             row[f'{mk}_mean'] = vals.mean()
             row[f'{mk}_std']  = vals.std()
@@ -321,15 +326,15 @@ for n_angles in ANGLE_CONFIGS:
 
 summary = pd.DataFrame(summary_rows)
 
-# Stampa formattata
-print(f"\n{'Angles':>7} {'Method':>6} | {'SSIM':>16} {'PSNR':>16} {'MSE':>16}")
-print('-' * 70)
+print(f"\n{'Angles':>7} {'Method':>6} | {'SSIM':>16} {'PSNR':>16} {'MSE':>16} {'RE':>16}")
+print('-' * 90)
 for _, r in summary.iterrows():
     print(
         f"{int(r['angles']):>7} {r['method']:>6} | "
         f"{r['ssim_mean']:.4f} ± {r['ssim_std']:.4f}   "
         f"{r['psnr_mean']:.2f} ± {r['psnr_std']:.2f} dB   "
-        f"{r['mse_mean']:.5f} ± {r['mse_std']:.5f}"
+        f"{r['mse_mean']:.5f} ± {r['mse_std']:.5f}   "
+        f"{r['re_mean']:.4f} ± {r['re_std']:.4f}"
     )
 
 summary_path = results_dir / f'summary_{LOSS_NAME}.csv'
