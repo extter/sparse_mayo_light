@@ -9,12 +9,15 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from torch.utils.data import DataLoader
 
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
 from methods.pnp.dataset import GaussianNoiseDataset
 from methods.end_to_end_2.unet import SimpleUNet
 
 # PATH CONFIGURATION 
-gt_train = "../../data/mayo/train" #DA CAMBIARE 
-gt_val = "../../data/mayo/validation" #DA CAMBIARE
+gt_train = "data/preprocessed/train" #DA CAMBIARE 
+gt_val = "data/preprocessed/validation" #DA CAMBIARE
 
 
 
@@ -31,14 +34,14 @@ train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True
 val_dataset = GaussianNoiseDataset(gt_val, split="val")
 val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-model = SimpleUNet(ch_in=1, ch_out=1, base_ch=16).to(DEVICE)
+model = SimpleUNet(in_ch=1, out_ch=1, base_ch=32).to(DEVICE)
 optimizer = Adam(model.parameters(), lr=LR)
 
 scheduler = ReduceLROnPlateau(optimizer, mode='min', factor = 0.5, patience=2)
 criterion_l1 = nn.L1Loss()
 criterion_l2 = nn.MSELoss() 
 
-scaler = torch.cuda.amp.GradScaler()
+scaler = torch.amp.GradScaler("cuda", enabled=DEVICE.type == "cuda")
 
 # TRAINING LOOP
 best_val_loss = float('inf')
@@ -57,7 +60,7 @@ for epoch in range(EPOCHS):
 
         optimizer.zero_grad()
 
-        with torch.cuda.amp.autocast():
+        with torch.amp.autocast("cuda", enabled=DEVICE.type == "cuda"):
             outputs = model(noisy_images)
             
             loss_l1 = criterion_l1(outputs, clean_images)
@@ -88,7 +91,7 @@ for epoch in range(EPOCHS):
             noisy_images = noisy_images.to(DEVICE)
             clean_images = clean_images.to(DEVICE)
 
-            with torch.cuda.amp.autocast():
+            with torch.amp.autocast("cuda", enabled=DEVICE.type == "cuda"):
                 outputs = model(noisy_images)
                 v_loss_l1 = criterion_l1(outputs, clean_images)
                 v_loss_l2 = criterion_l2(outputs, clean_images)
@@ -111,7 +114,6 @@ for epoch in range(EPOCHS):
         print(f"-> New best model saved!)")
 
 print("Training completed!")
-
 
 
 
