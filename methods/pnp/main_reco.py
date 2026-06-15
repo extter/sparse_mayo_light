@@ -1,11 +1,13 @@
 import torch
-import os 
 import time
 import numpy as np 
 import matplotlib.pyplot as plt 
 
 from torch.utils.data import DataLoader
 from skimage.metrics import structural_similarity as ssim
+
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from methods.pnp.dataset import TCDataset
 from methods.pnp.hqs import PnpHQS_Solver
@@ -53,9 +55,9 @@ def process_patient(sinogram, angles, solver, num_iter=100, mu=0.5, step=1):
 if __name__ == "__main__":
     
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    PATH_PESI = "./checkpoints/pnp_denoiser_best.pth" # DA CAMBIARE 
-    CARTELLA_SINOGRAMMI = "../../data/sinogram_corrupted/test/angles_180" # DA CAMBIARE ANCHE A SECONDA ANGOLO
-    CARTELLA_GROUND_TRUTH = "../../data/preprocessed/test" # DA CAMBIARE
+    PATH_PESI = "pnp_denoiser_best.pth" # DA CAMBIARE 
+    CARTELLA_SINOGRAMMI = "data/sinogram_corrupted/test/angles_45" # DA CAMBIARE ANCHE A SECONDA ANGOLO
+    CARTELLA_GROUND_TRUTH = "data/preprocessed/test" # DA CAMBIARE
 
     print("--- INIZIALIZZAZIONE PIPELINE BASE ---")
     
@@ -64,7 +66,7 @@ if __name__ == "__main__":
     test_dataset = TCDataset(sino_dir=CARTELLA_SINOGRAMMI, gt_dir=CARTELLA_GROUND_TRUTH)
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
-    CARTELLA_OUTPUT = "results_pnp_180" # DA CAMBIARE 
+    CARTELLA_OUTPUT = "./data/pnp/reco_pnp_45" # DA CAMBIARE 
     os.makedirs(CARTELLA_OUTPUT, exist_ok=True)
 
     for i, (my_sinogram, clean_img) in enumerate(test_loader):
@@ -86,7 +88,7 @@ if __name__ == "__main__":
             solver=solver, 
             num_iter=30, 
             mu=0.1, 
-            step=0.5 
+            step=1.5 
         )
         
         pnp_np = img_pnp.cpu().numpy()[0, 0]
