@@ -23,8 +23,8 @@ gt_val = "data/preprocessed/validation" #DA CAMBIARE
 
 # PARAMETERS CONFIGURATION
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 16
-EPOCHS = 50 
+BATCH_SIZE = 32
+EPOCHS = 30 
 LR = 1e-3
 
 # DATALOADER INITIALIZATION 
