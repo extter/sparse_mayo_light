@@ -1,11 +1,15 @@
 import torch
-import os
+import os, sys
 import time
 import numpy as np
 
 from torch.utils.data import DataLoader
 from skimage.metrics import structural_similarity as ssim
 from skimage.metrics import peak_signal_noise_ratio as psnr
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from methods.pnp.dataset import TCDataset
 from methods.pnp.hqs import PnpHQS_Solver
@@ -17,10 +21,10 @@ from third_party.ippy.operators import CTProjector
 # Valori di partenza ragionevoli: affinali empiricamente.             #
 # ------------------------------------------------------------------ #
 PARAMS_PER_ANGOLO = {
-    180: {"num_iter": 20, "mu": 0.05, "n_cg": 5},
-    90:  {"num_iter": 20, "mu": 0.08, "n_cg": 5},
+    180: {"num_iter": 10, "mu": 0.025, "n_cg": 5},
+    90:  {"num_iter": 12, "mu": 0.06, "n_cg": 5},
     60:  {"num_iter": 15, "mu": 0.08, "n_cg": 5},
-    45:  {"num_iter": 12, "mu": 0.08, "n_cg": 7},
+    45:  {"num_iter": 15, "mu": 0.1, "n_cg": 7},
 }
 
 
@@ -79,10 +83,10 @@ def process_patient(sinogram, angles, solver, num_iter=30, mu=0.1, n_cg=5):
 if __name__ == "__main__":
 
     DEVICE               = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    PATH_PESI            = "/kaggle/input/datasets/federicopaletta/checkpoints/pnp_denoiser_best_v2.pth"        # DA CAMBIARE
-    CARTELLA_SINOGRAMMI  = "/kaggle/input/datasets/catalinsajin/images-before-reco/sinogram_corrupted/test/angles_45"  # DA CAMBIARE
-    CARTELLA_GROUND_TRUTH= "/kaggle/input/datasets/catalinsajin/images-before-reco/preprocessed/test"               # DA CAMBIARE
-    CARTELLA_OUTPUT      = "results_pnp_45"                            # DA CAMBIARE
+    PATH_PESI            = "methods/pnp/pnp_denoiser_best_v2.pth"
+    CARTELLA_SINOGRAMMI  = "data/sinogram_corrupted/test/angles_180"  # DA CAMBIARE
+    CARTELLA_GROUND_TRUTH= "data/preprocessed/test"               # DA CAMBIARE
+    CARTELLA_OUTPUT      = "data/pnp/results_pnp_180"                            # DA CAMBIARE
 
     print("--- INIZIALIZZAZIONE PIPELINE PnP-HQS-CG ---")
     print(f"    Device: {DEVICE}")
@@ -98,9 +102,6 @@ if __name__ == "__main__":
     risultati = []
 
     for i, (my_sinogram, clean_img) in enumerate(test_loader):
-
-        if i == 1:
-            break
 
         my_sinogram = my_sinogram.to(DEVICE)
         clean_img   = clean_img.to(DEVICE)
@@ -145,8 +146,7 @@ if __name__ == "__main__":
             "psnr_pnp": psnr_pnp, "ssim_pnp": ssim_pnp,
         })
 
-        # --- Salvataggio immagini (FBP + PnP per confronto visivo) ---
-        np.save(os.path.join(CARTELLA_OUTPUT, f"fbp_{i+1:03d}.npy"), fbp_np)
+        # --- Salvataggio immagini (PnP per confronto visivo) ---
         np.save(os.path.join(CARTELLA_OUTPUT, f"pnp_{i+1:03d}.npy"), pnp_np)
 
     # --- Statistiche finali ---
