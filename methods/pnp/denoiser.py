@@ -23,7 +23,7 @@ gt_val = "data/preprocessed/validation" #DA CAMBIARE
 
 # PARAMETERS CONFIGURATION
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 EPOCHS = 30 
 LR = 1e-3
 
@@ -61,7 +61,9 @@ for epoch in range(EPOCHS):
         optimizer.zero_grad()
 
         with torch.amp.autocast("cuda", enabled=DEVICE.type == "cuda"):
-            outputs = model(noisy_images)
+            artifacts = model(noisy_images)
+            outputs = noisy_images - artifacts
+
             
             loss_l1 = criterion_l1(outputs, clean_images)
             loss_l2 = criterion_l2(outputs, clean_images)
@@ -92,7 +94,8 @@ for epoch in range(EPOCHS):
             clean_images = clean_images.to(DEVICE)
 
             with torch.amp.autocast("cuda", enabled=DEVICE.type == "cuda"):
-                outputs = model(noisy_images)
+                artifacts = model(noisy_images)
+                outputs = noisy_images - artifacts
                 v_loss_l1 = criterion_l1(outputs, clean_images)
                 v_loss_l2 = criterion_l2(outputs, clean_images)
                 loss = 0.5 * v_loss_l1 + 0.5 * v_loss_l2
@@ -110,7 +113,7 @@ for epoch in range(EPOCHS):
 
     if avg_val_loss < best_val_loss:
         best_val_loss = avg_val_loss
-        torch.save(model.state_dict(), "pnp_denoiser_best.pth")
+        torch.save(model.state_dict(), "methods/pnp/pnp_denoiser_best.pth")
         print(f"-> New best model saved!)")
 
 print("Training completed!")
