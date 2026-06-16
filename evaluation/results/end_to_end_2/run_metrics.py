@@ -24,6 +24,7 @@ matplotlib.rcParams.update({
 })
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+print(PROJECT_ROOT)
 LOSS_NAME    = "mixed"
 CSV_PATH     = PROJECT_ROOT / "end_to_end_2" / f"metrics_unet_{LOSS_NAME}.csv"
 SAVE_DIR     = PROJECT_ROOT / "end_to_end_2" / "boxplots"
@@ -105,7 +106,7 @@ from scipy.stats import ttest_rel
 # ============================================================
 # Load data
 # ============================================================
-csv_file = "metrics_unet_mixed.csv"
+csv_file = CSV_PATH
 
 df = pd.read_csv(csv_file)
 
@@ -155,8 +156,8 @@ for n in angles:
 
         print(
             f"{metric.upper():<5} | "
-            f"FBP = {fbp_mean:.4f} ± {fbp_std:.4f} | "
-            f"UNET = {unet_mean:.4f} ± {unet_std:.4f} | "
+            f"FBP = {fbp_mean:.6f} ± {fbp_std:.6f} | "
+            f"UNET = {unet_mean:.6f} ± {unet_std:.6f} | "
             f"Δ = {improvement:+.2f}% | "
             f"p = {p_value:.3e}"
         )
@@ -179,11 +180,9 @@ summary.to_csv("summary_metrics.csv", index=False)
 # ============================================================
 # Generate LaTeX table
 # ============================================================
-
 latex_rows = []
 
 for _, row in summary.iterrows():
-
     latex_rows.append(
         (
             f"{int(row['n_angles'])} & "
@@ -191,8 +190,10 @@ for _, row in summary.iterrows():
             f"{row['unet_ssim_mean']:.4f}$\\pm${row['unet_ssim_std']:.4f} & "
             f"{row['fbp_psnr_mean']:.2f}$\\pm${row['fbp_psnr_std']:.2f} & "
             f"{row['unet_psnr_mean']:.2f}$\\pm${row['unet_psnr_std']:.2f} & "
-            f"{row['fbp_mse_mean']:.6f}$\\pm${row['fbp_mse_std']:.6f} & "
-            f"{row['unet_mse_mean']:.6f}$\\pm${row['unet_mse_std']:.6f} \\\\"
+            f"{row['fbp_mse_mean']:.6f}$\\pm${row['fbp_mse_std']:.8f} & "
+            f"{row['unet_mse_mean']:.6f}$\\pm${row['unet_mse_std']:.8f} & "
+            f"{row['fbp_re_mean']:.4f}$\\pm${row['fbp_re_std']:.6f} & "
+            f"{row['unet_re_mean']:.4f}$\\pm${row['unet_re_std']:.6f} \\\\"
         )
     )
 
@@ -200,29 +201,26 @@ latex = r"""
 \begin{table}[ht]
 \centering
 \caption{Comparison between FBP and U-Net}
-\begin{tabular}{c|cc|cc|cc}
+\begin{tabular}{c|cc|cc|cc|cc}
 \hline
 Angles &
-SSIM FBP &
-SSIM U-Net &
-PSNR FBP &
-PSNR U-Net &
-MSE FBP &
-MSE U-Net \\
+SSIM FBP & SSIM U-Net &
+PSNR FBP & PSNR U-Net &
+MSE FBP  & MSE U-Net  &
+RE FBP   & RE U-Net   \\
 \hline
 """
 
 latex += "\n".join(latex_rows)
 
 latex += r"""
-\\hline
+\\\hline
 \end{tabular}
 \end{table}
 """
 
 with open("table.tex", "w") as f:
     f.write(latex)
-
 print("\nSaved:")
 print("  summary_metrics.csv")
 print("  table.tex")
