@@ -96,3 +96,133 @@ for col, metric_label, direction in METRICS:
     print(f"Saved: {save_path}")
 
 print(f"\nDone. Boxplots in: {SAVE_DIR}")
+
+
+import pandas as pd
+import numpy as np
+from scipy.stats import ttest_rel
+
+# ============================================================
+# Load data
+# ============================================================
+csv_file = "metrics_unet_mixed.csv"
+
+df = pd.read_csv(csv_file)
+
+# ============================================================
+# Metrics to analyze
+# ============================================================
+metrics = ["ssim", "psnr", "mse", "re"]
+
+angles = sorted(df["n_angles"].unique())
+
+rows = []
+
+print("\n" + "=" * 80)
+print("SUMMARY STATISTICS")
+print("=" * 80)
+
+for n in angles:
+
+    subset = df[df["n_angles"] == n]
+
+    print(f"\nAngles = {n}")
+    print("-" * 80)
+
+    row = {"n_angles": n}
+
+    for metric in metrics:
+
+        fbp = subset[f"fbp_{metric}"]
+        unet = subset[f"unet_{metric}"]
+
+        fbp_mean = fbp.mean()
+        fbp_std = fbp.std()
+
+        unet_mean = unet.mean()
+        unet_std = unet.std()
+
+        t_stat, p_value = ttest_rel(unet, fbp)
+
+        if metric in ["ssim", "psnr"]:
+            improvement = (
+                (unet_mean - fbp_mean) / abs(fbp_mean) * 100
+            )
+        else:
+            improvement = (
+                (fbp_mean - unet_mean) / abs(fbp_mean) * 100
+            )
+
+        print(
+            f"{metric.upper():<5} | "
+            f"FBP = {fbp_mean:.4f} ± {fbp_std:.4f} | "
+            f"UNET = {unet_mean:.4f} ± {unet_std:.4f} | "
+            f"Δ = {improvement:+.2f}% | "
+            f"p = {p_value:.3e}"
+        )
+
+        row[f"fbp_{metric}_mean"] = fbp_mean
+        row[f"fbp_{metric}_std"] = fbp_std
+
+        row[f"unet_{metric}_mean"] = unet_mean
+        row[f"unet_{metric}_std"] = unet_std
+
+        row[f"{metric}_improvement_%"] = improvement
+        row[f"{metric}_pvalue"] = p_value
+
+    rows.append(row)
+
+summary = pd.DataFrame(rows)
+
+summary.to_csv("summary_metrics.csv", index=False)
+
+# ============================================================
+# Generate LaTeX table
+# ============================================================
+
+latex_rows = []
+
+for _, row in summary.iterrows():
+
+    latex_rows.append(
+        (
+            f"{int(row['n_angles'])} & "
+            f"{row['fbp_ssim_mean']:.4f}$\\pm${row['fbp_ssim_std']:.4f} & "
+            f"{row['unet_ssim_mean']:.4f}$\\pm${row['unet_ssim_std']:.4f} & "
+            f"{row['fbp_psnr_mean']:.2f}$\\pm${row['fbp_psnr_std']:.2f} & "
+            f"{row['unet_psnr_mean']:.2f}$\\pm${row['unet_psnr_std']:.2f} & "
+            f"{row['fbp_mse_mean']:.6f}$\\pm${row['fbp_mse_std']:.6f} & "
+            f"{row['unet_mse_mean']:.6f}$\\pm${row['unet_mse_std']:.6f} \\\\"
+        )
+    )
+
+latex = r"""
+\begin{table}[ht]
+\centering
+\caption{Comparison between FBP and U-Net}
+\begin{tabular}{c|cc|cc|cc}
+\hline
+Angles &
+SSIM FBP &
+SSIM U-Net &
+PSNR FBP &
+PSNR U-Net &
+MSE FBP &
+MSE U-Net \\
+\hline
+"""
+
+latex += "\n".join(latex_rows)
+
+latex += r"""
+\\hline
+\end{tabular}
+\end{table}
+"""
+
+with open("table.tex", "w") as f:
+    f.write(latex)
+
+print("\nSaved:")
+print("  summary_metrics.csv")
+print("  table.tex")
