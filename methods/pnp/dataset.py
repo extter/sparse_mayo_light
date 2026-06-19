@@ -33,24 +33,16 @@ class GaussianNoiseDataset(Dataset):
     
 class TCDataset(Dataset):
     def __init__(self, sino_dir, gt_dir):
-        """
-        Args:
-            sino_dir (str): Percorso alla cartella contenente i sinogrammi rumorosi.
-            gt_dir (str): Percorso alla cartella contenente le immagini pulite (Ground Truth).
-        """
         self.sino_dir = sino_dir
         self.gt_dir = gt_dir
         
-        # Legge i nomi dei file e li ordina per essere sicuro che combacino perfettamente
         self.sino_files = sorted([f for f in os.listdir(sino_dir) if f.endswith('.npy')])
         self.gt_files = sorted([f for f in os.listdir(gt_dir) if f.endswith('.npy')])
         
-        # Controllo di sicurezza per evitare disallineamenti tra input e target
         if len(self.sino_files) != len(self.gt_files):
             print(f" Attenzione: Trovati {len(self.sino_files)} sinogrammi e {len(self.gt_files)} immagini GT!")
 
     def __len__(self):
-        # Dice a PyTorch quante slice ci sono in totale nel dataset
         return len(self.sino_files)
 
     def __getitem__(self, idx):

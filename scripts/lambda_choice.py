@@ -2,7 +2,7 @@
 """
 lambda_choice.py
 
-Esegue il tuning euristico di lambda per la ricostruzione TV
+Esegue il grid search di lambda per la ricostruzione TV
 su un sottoinsieme del training set, salvando:
 - immagini qualitative per ogni lambda in save_dir (da config)
 - metriche quantitative in evaluation/results/lambda_choice/

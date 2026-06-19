@@ -4,9 +4,6 @@ import math
 import torch
 from skimage.metrics import structural_similarity as ssim
 
-####################################################################
-# Custom decorator
-####################################################################
 def average_on_batch(func):
     @functools.wraps(func)
     def wrapper(tensor1, tensor2, *args, **kwargs):

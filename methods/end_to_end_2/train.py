@@ -91,8 +91,8 @@ def train(
     num_epochs=10,
     lr=1e-3,
     loss_name='mixed',
-    use_scheduler=True,       # <-- nuovo
-    eta_min=1e-6,             # <-- LR minimo a fine annealing
+    use_scheduler=True,     
+    eta_min=1e-6,            
 ):
     loss_fn = get_loss(loss_name).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -132,7 +132,7 @@ def train(
             f'Val loss: {val_loss:.6f} | '
             f'Val SSIM: {val_ssim:.4f} | '
             f'Val PSNR: {val_psnr:.2f} dB | '
-            f'LR: {current_lr:.2e}'        # <-- utile per vedere il decay
+            f'LR: {current_lr:.2e}'      
         )
 
         if val_ssim > best_ssim:

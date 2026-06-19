@@ -12,7 +12,6 @@ from third_party.ippy import operators, solvers
 
 
 def get_device():
-    """Restituisce il device disponibile."""
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -20,13 +19,6 @@ def create_operators_dict(angle_configs, image_size, det_size):
     """
     Crea un dizionario di operatori CTProjector, uno per ogni configurazione angolare.
 
-    Args:
-        angle_configs (list[int]): lista dei numeri di angoli
-        image_size (int): dimensione immagine quadrata
-        det_size (int): dimensione detector
-
-    Returns:
-        dict[int, CTProjector]
     """
     operators_dict = {}
 
@@ -44,15 +36,6 @@ def create_operators_dict(angle_configs, image_size, det_size):
 
 
 def create_tv_solver(projector):
-    """
-    Crea il solver Chambolle-Pock per TV/TpV unconstrained.
-
-    Args:
-        projector: operatore CTProjector
-
-    Returns:
-        solver instance
-    """
     return solvers.ChambollePockTpVUnconstrained(projector)
 
 
@@ -68,16 +51,6 @@ def reconstruct_tv(
 ):
     """
     Esegue la ricostruzione TV da un sinogramma corrotto.
-
-    Args:
-        y_delta (torch.Tensor): sinogramma corrotto
-        solver: solver Chambolle-Pock
-        lmbda (float): parametro di regolarizzazione
-        maxiter (int): numero massimo di iterazioni
-        p (int | float): parametro di sparsity
-        x_true (torch.Tensor | None): ground truth opzionale
-        starting_point (torch.Tensor | None): inizializzazione opzionale
-        verbose (bool): stampa interna del solver
 
     Returns:
         tuple[torch.Tensor, dict]: soluzione ricostruita e info del solver
@@ -107,17 +80,6 @@ def reconstruct_and_save_numpy(
 ):
     """
     Ricostruisce e restituisce direttamente l'output come array NumPy 2D.
-
-    Args:
-        y_delta (torch.Tensor): sinogramma corrotto
-        solver: solver Chambolle-Pock
-        lmbda (float): parametro di regolarizzazione
-        maxiter (int): numero massimo di iterazioni
-        p (int | float): parametro di sparsity
-        device (torch.device): cpu o cuda
-        x_true (torch.Tensor | None): ground truth opzionale
-        starting_point (torch.Tensor | None): inizializzazione opzionale
-        verbose (bool): stampa interna del solver
 
     Returns:
         np.ndarray: ricostruzione shape (H, W)

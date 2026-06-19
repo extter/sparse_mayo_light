@@ -16,8 +16,8 @@ from methods.pnp.dataset import GaussianNoiseDataset
 from methods.end_to_end_2.unet import SimpleUNet
 
 # PATH CONFIGURATION 
-gt_train = "data/preprocessed/train" #DA CAMBIARE 
-gt_val = "data/preprocessed/validation" #DA CAMBIARE
+gt_train = "data/preprocessed/train" 
+gt_val = "data/preprocessed/validation"
 
 
 

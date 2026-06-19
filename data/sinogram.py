@@ -78,16 +78,6 @@ def generate_sinogram_pair(img_np, projector, noise_level, device):
 
 
 def build_output_filename(img_path, preprocessed_split_path):
-    """
-    Costruisce il nome file .npy di output a partire dal path dell'immagine preprocessata.
-
-    Args:
-        img_path (str): path completo del file .npy preprocessato
-        preprocessed_split_path (str): path della cartella split, es. data/preprocessed/train
-
-    Returns:
-        str: filename finale, es. patient_001_slice_012.npy
-    """
     rel_path = os.path.relpath(img_path, preprocessed_split_path)
     filename = os.path.splitext(rel_path.replace(os.sep, "_"))[0] + ".npy"
     return filename
@@ -104,20 +94,7 @@ def save_sinograms_for_split(
     noise_level,
     device,
 ):
-    """
-    Genera e salva tutti i sinogrammi clean/corrupted per uno split.
 
-    Args:
-        image_paths (list[str]): lista di file .npy preprocessati
-        split_name (str): train / validation / test
-        preprocessed_path (str): root di data/preprocessed
-        sinogram_clean_path (str): root di data/sinogram_clean
-        sinogram_corrupted_path (str): root di data/sinogram_corrupted
-        operators_dict (dict): dizionario operatori per numero di angoli
-        angle_configs (list[int]): configurazioni angolari
-        noise_level (float): livello rumore
-        device (torch.device): cpu/cuda
-    """
     split_preprocessed_path = os.path.join(preprocessed_path, split_name)
 
     for img_path in image_paths:

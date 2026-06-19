@@ -56,7 +56,7 @@ fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 alphas = {
     "FBP": 1.0,
     "TV": 1.0,
-    "UNet (vs TV)": 0.25,   # quasi trasparente
+    "UNet (vs TV)": 0.25, 
     "UNet (vs prep.)": 1.0,
     "PnP": 1.0,
 }

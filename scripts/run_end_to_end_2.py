@@ -75,8 +75,7 @@ def compute_metrics_per_slice(pred: torch.Tensor,
                                target: torch.Tensor) -> dict:
     """
     Calcola SSIM, PSNR, MSE e RE per ogni slice nel batch.
-    pred/target: [B, 1, H, W] float, range [0, 1].
-    Ritorna dict con liste di lunghezza B.
+
     """
     B = pred.shape[0]
     ssims, psnrs, mses, res = [], [], [], []

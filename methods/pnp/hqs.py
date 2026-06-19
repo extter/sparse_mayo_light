@@ -17,44 +17,9 @@ class PnpHQS_Solver(nn.Module):
             param.requires_grad = False
 
     def _matvec(self, v, projector, mu, y_scale):
-        """
-        Calcola il prodotto matrice-vettore M*v = (A^T A + mu*I) * v
-        senza mai costruire M esplicitamente.
-
-        E' il cuore del CG: basta saper applicare l'operatore forward
-        e il suo aggiunto (backprojection).
-        """
         return projector.T(projector(v)) / y_scale + mu * v
 
     def _conjugate_gradient(self, projector, b, mu, x_init, n_cg=5, y_scale=1):
-        """
-        Risolve il sistema lineare:
-
-            (A^T A + mu * I) x = b
-
-        con il metodo del Conjugate Gradient (CG).
-
-        Questo e' il sottoproblema ESATTO in x dell'HQS:
-
-            x^{k+1} = argmin_x  ||Ax - y||^2 + mu * ||x - z^k||^2
-
-        Il termine noto b = A^T y + mu * z^k viene passato dall'esterno
-        perche' dipende da z^k che cambia ad ogni iterazione esterna.
-
-        Parametri
-        ---------
-        b      : termine noto  A^T y + mu * z^k  (cambia ad ogni iter HQS)
-        mu     : parametro di accoppiamento (stesso usato nell'HQS esterno)
-        x_init : punto di partenza (tipicamente x^k, la soluzione precedente)
-        n_cg   : numero di iterazioni CG (3-5 bastano grazie alla convergenza
-                 superlineare del CG su sistemi ben condizionati)
-
-        Note
-        ----
-        Il CG non richiede step size ne' ATA_norm: gestisce autonomamente
-        la direzione e l'ampiezza di ogni passo tramite i coefficienti
-        alpha_cg e beta_cg calcolati dai prodotti scalari.
-        """
         x = x_init.clone()
 
         # Residuo iniziale: r = b - M*x
@@ -64,7 +29,7 @@ class PnpHQS_Solver(nn.Module):
 
         for _ in range(n_cg):
             if r_dot.item() < 1e-10:
-                # Gia' converguto: residuo nullo, soluzione esatta trovata
+                # Gia' converged: residuo nullo, soluzione esatta trovata
                 break
 
             Mp = self._matvec(p, projector, mu, y_scale)      # M * p
@@ -89,25 +54,7 @@ class PnpHQS_Solver(nn.Module):
 
     def reconstruct(self, sinogram, projector, x_init=None,
                     num_iterations=20, mu=0.1, n_cg=5):
-        """
-        PnP-HQS con sottoproblema in x risolto via Conjugate Gradient.
 
-        Ad ogni iterazione esterna k:
-
-          FASE 1 (x-step, esatto):
-            b^k = A^T y + mu * z^k
-            x^{k+1} = CG( (A^T A + mu I) x = b^k )   <- n_cg iterazioni
-
-          FASE 2 (z-step, Plug and Play):
-            z^{k+1} = D_CNN( x^{k+1} )
-
-        Parametri
-        ---------
-        num_iterations : iterazioni HQS esterne (tipico: 15-30;
-                         meno che prima perche' ogni x-step e' esatto)
-        mu             : accoppiamento x=z  (tipico: 0.05-0.3)
-        n_cg           : iterazioni CG interne  (tipico: 3-7)
-        """
         with torch.no_grad():
             y = sinogram.to(self.device)
 
@@ -151,7 +98,7 @@ class PnpHQS_Solver(nn.Module):
                     projector=projector,
                     b=b,
                     mu=mu,
-                    x_init=x,   # warm start: parte dalla soluzione precedente
+                    x_init=x,
                     n_cg=n_cg,
                     y_scale=y_scale
                 )
